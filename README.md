@@ -162,7 +162,7 @@ Fortress_Linux/
 1. Clone this repository to your Ansible control node:
 
    ```bash
-   git clone https://github.com/your-repo/fortress-linux.git
+   git clone https://github.com/elliotsecops/fortress-linux.git
    cd fortress-linux
    ```
 
