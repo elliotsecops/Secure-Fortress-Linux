@@ -1,215 +1,228 @@
-# **Fortress Linux: Building an Impenetrable Digital Stronghold**
 
-**Fortress Linux** is an automated Linux hardening solution designed to improve your system's security posture. It integrates **Ansible** for streamlined deployment across multiple systems and **Wazuh** for continuous monitoring and alerting of security threats. With a focus on automation, scalability, and robust protection, Fortress Linux helps you lock down your servers and track potential risks in real-time.
+
+# Fortress Linux
+
+Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging **Ansible** for configuration management and **Wazuh** for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
+
+## Features
+
+- Automated Linux hardening via shell scripts.
+- Integration with Wazuh for real-time monitoring and alerting.
+- Configurable with Ansible for scalable deployments.
+- Logs every step for easy auditing and troubleshooting.
+
+## Prerequisites
+
+Before you start, ensure you have the following installed:
+
+- **Ansible** (version 2.9 or higher)
+- **Wazuh Agent** (version 4.x)
+- Python 3.x (for Ansible)
+  
+## Project Structure
+
+```bash
+.
+├── config
+│   ├── ansible.cfg
+│   └── hosts
+├── logs
+│   └── deployment.log
+├── playbooks
+│   └── playbook_hardening.yml
+├── scripts
+│   └── linux_hardening.sh
+└── templates
+    └── wazuh-agent-config.j2
+```
+
+- **config/**: Ansible configuration files and inventory.
+- **logs/**: Log files of the deployment process.
+- **playbooks/**: Ansible playbooks for automating the hardening process.
+- **scripts/**: The main shell script for hardening Linux systems.
+- **templates/**: Template for Wazuh agent configuration.
 
 ---
 
-## **Table of Contents**
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-  - [Install Dependencies](#install-dependencies)
-  - [Install Wazuh](#install-wazuh)
-  - [Install Ansible](#install-ansible)
-- [Project Structure](#project-structure)
-- [Usage](#usage)
-  - [Run the Script with Ansible](#run-the-script-with-ansible)
-  - [Monitoring with Wazuh](#monitoring-with-wazuh)
-- [Best Practices](#best-practices)
-- [License](#license)
+## Installation
 
----
+### 1. Clone the Repository
 
-## **Features**
+```bash
+git clone https://github.com/elliotsecops/Fortress_Linux.git
+cd Fortress_Linux
+```
 
-- **Automated Hardening**: Secures Linux servers with firewall rules, SSH configuration, service management, password policies, and auditing.
-- **Ansible Integration**: Automates the deployment of hardening policies across multiple systems.
-- **Wazuh Monitoring**: Provides real-time monitoring and alerting on security-related events such as unauthorized file changes and suspicious log entries.
-- **Scalable & Consistent**: Easily scalable to any number of servers with consistent application of security policies.
-- **Modular & Extensible**: Flexible architecture allows for easy customization and expansion of the hardening policies.
+### 2. Install Dependencies
 
----
+#### Install Ansible
 
-## **Prerequisites**
-
-Before you start, ensure that you have the following:
-1. A **Linux server** or multiple servers for testing/deployment.
-2. **Root or sudo access** to the servers.
-3. **Ansible** installed on a control node for managing servers.
-4. **Wazuh Manager** installed to collect alerts from agents (installed on the target servers).
-5. **Git** for cloning this repository.
-
----
-
-## **Installation**
-
-### **Install Dependencies**
-
-Ensure your system is updated and basic dependencies are installed.
+For Ubuntu/Debian:
 
 ```bash
 sudo apt update
-sudo apt install -y curl wget git
+sudo apt install ansible -y
 ```
 
-### **Install Wazuh**
+For CentOS/RHEL:
 
-Wazuh is an open-source security monitoring platform that will track changes and security events in real-time. Follow the steps below to install the **Wazuh Manager** and **Agent**.
+```bash
+sudo yum install epel-release -y
+sudo yum install ansible -y
+```
 
-#### **1. Install Wazuh Manager**
+#### Install Wazuh Agent
 
-On the monitoring server, install Wazuh Manager:
+Add the Wazuh repository:
 
 ```bash
 curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo apt-key add -
 echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
-sudo apt update
-sudo apt install wazuh-manager
 ```
 
-Start and enable the Wazuh Manager service:
+Update your package list and install the agent:
 
 ```bash
-sudo systemctl start wazuh-manager
-sudo systemctl enable wazuh-manager
-```
-
-#### **2. Install Wazuh Agent**
-
-On each server you want to monitor (where the hardening script will run), install Wazuh Agent:
-
-```bash
-curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | sudo apt-key add -
-echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee /etc/apt/sources.list.d/wazuh.list
 sudo apt update
 sudo apt install wazuh-agent
 ```
 
-Configure the Wazuh Agent to point to your Wazuh Manager by editing the `/var/ossec/etc/ossec.conf` file. Replace `MANAGER_IP` with the actual IP of your Wazuh Manager:
+### 3. Configure Wazuh Agent
+
+Update the `wazuh-agent-config.j2` template in `templates/` with your Wazuh Manager's IP address:
 
 ```xml
-<client>
-  <address>MANAGER_IP</address>
-  <port>1514</port>
-</client>
+<agent_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_ip }}</address>
+      <port>1514</port>
+    </server>
+  </client>
+
+  <rootcheck>
+    <disabled>no</disabled>
+  </rootcheck>
+
+  <syscheck>
+    <disabled>no</disabled>
+    <directories>/etc</directories>
+    <directories>/var/log</directories>
+    <ignore>/etc/mtab</ignore>
+    <frequency>3600</frequency>
+    <auto_ignore>no</auto_ignore>
+    <alert_new_files>yes</alert_new_files>
+    <scan_on_start>yes</scan_on_start>
+  </syscheck>
+</agent_config>
 ```
 
-Start and enable the Wazuh Agent:
+### 4. Run the Hardening Script with Ansible
+
+Ensure your `hosts` file in `config/hosts` is set up correctly with your target machines:
+
+```ini
+[linux_hardened]
+192.168.0.10 ansible_user=root
+192.168.0.20 ansible_user=root
+```
+
+Then run the Ansible playbook:
 
 ```bash
-sudo systemctl start wazuh-agent
-sudo systemctl enable wazuh-agent
+ansible-playbook playbooks/playbook_hardening.yml
 ```
 
-### **Install Ansible**
-
-On the control node (your system from which you'll manage the servers), install **Ansible**:
-
-1. Add the Ansible PPA repository:
-
-   ```bash
-   sudo apt update
-   sudo apt install -y software-properties-common
-   sudo add-apt-repository --yes --update ppa:ansible/ansible
-   ```
-
-2. Install Ansible:
-
-   ```bash
-   sudo apt install -y ansible
-   ```
-
-3. Verify Ansible installation:
-
-   ```bash
-   ansible --version
-   ```
-
 ---
 
-## **Project Structure**
+## Troubleshooting
 
-The **Fortress Linux** project includes the following directories and files:
+### 1. **Wazuh Agent Installation Error** (`Directory not empty`)
 
-```
-Fortress_Linux/
-├── scripts/
-│   └── linux_hardening.sh
-├── playbooks/
-│   └── playbook_hardening.yml
-├── templates/
-│   └── wazuh-agent-config.j2
-├── config/
-│   ├── ansible.cfg
-│   ├── hosts
-├── logs/
-│   └── deployment.log
-└── README.md
+If you see an error like:
+
+```bash
+mv: cannot overwrite '/var/ossec/etc/shared/default': Directory not empty
 ```
 
-- **scripts/**: Contains the main Bash script (`linux_hardening.sh`) that performs the hardening steps.
-- **playbooks/**: Ansible playbook for deploying the hardening script and installing Wazuh Agent.
-- **templates/**: Contains a Jinja2 template for configuring Wazuh Agent (`wazuh-agent-config.j2`).
-- **config/**: Configuration files for Ansible, including the inventory file (`hosts`) and `ansible.cfg`.
-- **logs/**: Logs generated during the deployment process.
+This means a prior Wazuh agent or manager installation may be causing conflicts. Try the following:
+
+```bash
+sudo apt purge wazuh-manager wazuh-agent
+sudo rm -rf /var/ossec
+```
+
+Then, reinstall the agent:
+
+```bash
+sudo apt install wazuh-agent
+```
+
+### 2. **Ansible Connection Issues**
+
+If Ansible cannot connect to the target machines (SSH errors):
+
+- Ensure the correct user and SSH key are specified in the `config/hosts` file.
+- Disable host key checking in `ansible.cfg`:
+
+```ini
+[defaults]
+host_key_checking = False
+```
+
+- Test the connection manually:
+
+```bash
+ssh root@192.168.0.10
+```
+
+### 3. **Ansible Timeout**
+
+If the playbook hangs or times out, increase the SSH timeout in `ansible.cfg`:
+
+```ini
+[defaults]
+timeout = 60
+```
+
+### 4. **Wazuh Agent Not Connecting to Manager**
+
+If the Wazuh agent isn't connecting to the manager, verify that:
+- The Wazuh Manager IP in `wazuh-agent-config.j2` is correct.
+- The ports (1514 and 1515) are open on the Wazuh Manager.
+- Restart the agent:
+
+```bash
+sudo systemctl restart wazuh-agent
+```
+
+### 5. **Playbook Fails with Permission Denied**
+
+Make sure the `remote_user` has sudo privileges on the target machines. You can use `become` in the playbook to escalate privileges:
+
+```yaml
+tasks:
+  - name: Ensure script is executable
+    file:
+      path: /path/to/script.sh
+      mode: '0755'
+    become: yes
+```
 
 ---
 
-## **Usage**
+## Best Practices
 
-### **Run the Script with Ansible**
-
-1. Clone this repository to your Ansible control node:
-
-   ```bash
-   git clone https://github.com/elliotsecops/fortress-linux.git
-   cd fortress-linux
-   ```
-
-2. Edit the `config/hosts` file to include the target servers:
-
-   ```ini
-   [hardening_targets]
-   server1 ansible_host=192.168.1.10
-   server2 ansible_host=192.168.1.11
-   ```
-
-3. Run the Ansible playbook to deploy the hardening script and Wazuh Agent:
-
-   ```bash
-   ansible-playbook -i config/hosts playbook_hardening.yml
-   ```
-
-This will:
-- Update the target systems.
-- Deploy the hardening script.
-- Install and configure Wazuh Agent.
-- Log the deployment process in `logs/deployment.log`.
-
-### **Monitoring with Wazuh**
-
-Once the hardening process is complete, Wazuh will start monitoring the hardened systems. From your **Wazuh Manager**'s dashboard, you can:
-
-- **Track file integrity**: Monitor changes to critical files like `/etc/passwd` and `/etc/shadow`.
-- **Log analysis**: Detect suspicious activity in system logs.
-- **Receive alerts**: Get notified of any security-related events in real-time.
+- **Before Hardening**: Always backup your system configuration, data, and current state before applying any hardening procedures. Test the script on a non-production environment.
+  
+- **After Hardening**: Regularly monitor your system using Wazuh and verify the hardening measures remain intact with each update or change. Schedule periodic security scans and vulnerability assessments.
 
 ---
 
-## **Best Practices**
+## License
 
-### **Before Running the Script:**
-1. **Test in a Staging Environment**: Always run the script on a non-production server to ensure that no unintended disruptions occur.
-2. **Backups**: Ensure you have recent backups of your system and configuration files.
-3. **Review SSH Settings**: Double-check SSH hardening measures, such as disabling root login, to avoid locking yourself out.
-
-### **After Running the Script:**
-1. **Monitor Continuously**: Use Wazuh to continuously monitor the security of the system and look for unauthorized changes.
-2. **Review Logs**: Regularly check deployment and system logs for any potential issues.
-3. **Update Regularly**: Keep the hardening script updated with the latest security recommendations.
+This project is licensed under the MIT License.
 
 ---
 
-## **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This `README.md` provides all the steps needed to deploy, troubleshoot, and manage **Fortress Linux** effectively. Would you like to add anything else to the instructions?
