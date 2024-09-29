@@ -1,7 +1,3 @@
-Here’s a comprehensive `README.md` for **Fortress Linux**, detailing the installation of dependencies, Wazuh, and Ansible, as well as how to use the project:
-
----
-
 # **Fortress Linux: Building an Impenetrable Digital Stronghold**
 
 **Fortress Linux** is an automated Linux hardening solution designed to improve your system's security posture. It integrates **Ansible** for streamlined deployment across multiple systems and **Wazuh** for continuous monitoring and alerting of security threats. With a focus on automation, scalability, and robust protection, Fortress Linux helps you lock down your servers and track potential risks in real-time.
