@@ -1,4 +1,4 @@
-#Secure Fortress Linux
+# Secure Fortress Linux
 
 Secure Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging **Ansible** for configuration management and **Wazuh** for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
 
