@@ -1,8 +1,6 @@
+#Secure Fortress Linux
 
-
-# Fortress Linux
-
-Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging **Ansible** for configuration management and **Wazuh** for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
+Secure Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging **Ansible** for configuration management and **Wazuh** for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
 
 ## Features
 
@@ -47,11 +45,6 @@ Before you start, ensure you have the following installed:
 ## Installation
 
 ### 1. Clone the Repository
-
-```bash
-git clone https://github.com/elliotsecops/Fortress_Linux.git
-cd Fortress_Linux
-```
 
 ### 2. Install Dependencies
 
