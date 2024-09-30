@@ -1,0 +1,56 @@
+---
+- name: Fortress Linux System Hardening
+  hosts: all
+  become: true
+  vars:
+    wazuh_manager_ip: "YOUR_WAZUH_MANAGER_IP"
+    packages:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - auditd
+      - wazuh-agent
+
+  tasks:
+    - name: Ensure required packages are installed
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+
+    - name: Configure Wazuh Agent
+      template:
+        src: "../templates/wazuh-agent-config.j2"
+        dest: /var/ossec/etc/ossec.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - restart wazuh-agent
+
+    - name: Enable and start Wazuh agent
+      systemd:
+        name: wazuh-agent
+        enabled: yes
+        state: started
+
+    - name: Enable Unattended Upgrades
+      shell: dpkg-reconfigure --priority=low unattended-upgrades
+
+    - name: Set up UFW firewall rules for SSH
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        comment: "Allow SSH"
+      notify:
+        - reload ufw
+
+  handlers:
+    - name: restart wazuh-agent
+      systemd:
+        name: wazuh-agent
+        state: restarted
+
+    - name: reload ufw
+      command: ufw reload

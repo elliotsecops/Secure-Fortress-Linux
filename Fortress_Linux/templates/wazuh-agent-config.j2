@@ -1,0 +1,56 @@
+<agent_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_ip }}</address>
+      <port>1514</port>
+    </server>
+  </client>
+
+  <!-- Rootcheck Settings -->
+  <rootcheck>
+    <disabled>no</disabled>
+    <frequency>43200</frequency> <!-- Run rootcheck every 12 hours (tunable) -->
+    <rootkit_files>yes</rootkit_files> <!-- Enable rootkit file scanning -->
+    <rootkit_trojans>yes</rootkit_trojans> <!-- Enable rootkit trojan scanning -->
+  </rootcheck>
+
+  <!-- Syscheck Settings -->
+  <syscheck>
+    <disabled>no</disabled>
+
+    <!-- Monitored Directories -->
+    <directories>/etc</directories>
+    <directories>/var/log</directories>
+    <directories realtime="yes">/bin</directories> <!-- Realtime monitoring for binaries -->
+
+    <!-- Ignored Files/Directories -->
+    <ignore>/etc/mtab</ignore>
+    <ignore>/var/log/wtmp</ignore> <!-- Commonly ignored log file -->
+
+    <!-- Scanning Behavior -->
+    <frequency>3600</frequency> <!-- Scan every 1 hour -->
+    <auto_ignore>no</auto_ignore>
+    <alert_new_files>yes</alert_new_files> <!-- Alert on newly created files -->
+    <scan_on_start>yes</scan_on_start>
+
+    <!-- Whitelisted Files (if any) -->
+    <whitelist>/etc/hostname</whitelist>
+
+    <!-- Monitoring for changes in registry values (useful for Windows if applicable) -->
+    <registry>
+      <enabled>no</enabled> <!-- Disable by default unless on a Windows machine -->
+    </registry>
+  </syscheck>
+
+  <!-- Log Collection and Monitoring (Optional) -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/auth.log</location>
+  </localfile>
+
+  <!-- Optional: Enable or Disable Alerts -->
+  <alerts>
+    <disabled>no</disabled>
+  </alerts>
+
+</agent_config>
