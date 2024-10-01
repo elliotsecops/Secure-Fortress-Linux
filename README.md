@@ -1,4 +1,226 @@
-# Secure Fortress Linux
+# Secure Fortress Linux (ESP)
+
+Secure Fortress Linux es una solución automatizada de fortalecimiento diseñada para asegurar entornos Linux utilizando las mejores prácticas. Al aprovechar Ansible para la gestión de configuraciones y Wazuh para la monitorización, asegura una robusta seguridad del sistema mientras permite la monitorización continua de cumplimiento y la detección de rootkits.
+
+## Tabla de Contenidos
+- [Introducción](#introducción)
+- [Características](#características)
+- [Prerrequisitos](#prerrequisitos)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Instalación](#instalación)
+- [Uso](#uso)
+- [Script Bash (`linux_hardening.sh`)](#script-bash-linux_hardeningsh)
+- [Correlación entre Componentes](#correlación-entre-componentes)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
+
+## Introducción
+
+En el panorama digital actual, asegurar entornos Linux es más crítico que nunca. Secure Fortress Linux tiene como objetivo simplificar y automatizar el proceso de fortalecimiento de sistemas Linux, facilitando a los administradores el mantenimiento de un entorno seguro.
+
+## Características
+
+- **Fortalecimiento Automatizado de Linux**: Utiliza scripts de shell para fortalecer sistemas Linux, cubriendo áreas como actualizaciones del sistema, configuración del firewall, deshabilitación de servicios y más.
+- **Integración con Wazuh**: Monitoreo y alertas en tiempo real con Wazuh, incluyendo detección de rootkits, monitoreo de integridad de archivos y recolección de logs.
+- **Configurable con Ansible**: Implementaciones escalables utilizando playbooks de Ansible, permitiendo una fácil personalización y gestión de múltiples sistemas.
+- **Registro**: Registra cada paso para una auditoría y solución de problemas fácil, asegurando transparencia y responsabilidad.
+
+## Prerrequisitos
+
+Antes de comenzar, asegúrate de tener lo siguiente instalado:
+- **Ansible** (versión 2.9 o superior): Asegúrate de que Ansible esté instalado en tu sistema.
+- **Python 3.x**: Asegúrate de que Python 3.x esté instalado en tu sistema.
+- **Wazuh Agent**
+
+## Estructura del Proyecto
+
+```plaintext
+.
+├── config
+│   ├── ansible.cfg
+│   └── hosts
+├── install_dependencies.sh
+├── logs
+│   └── deployment.log
+├── playbooks
+│   └── playbook_hardening.yml
+├── scripts
+│   └── linux_hardening.sh
+└── templates
+    └── wazuh-agent-config.j2
+```
+
+- **config/**: Archivos de configuración y inventario de Ansible.
+- **install_dependencies.sh**: Script para instalar dependencias.
+- **logs/**: Archivos de registro del proceso de implementación.
+- **playbooks/**: Playbooks de Ansible para automatizar el proceso de fortalecimiento.
+- **scripts/**: El script principal de shell para fortalecer sistemas Linux.
+- **templates/**: Plantilla para la configuración del agente Wazuh.
+
+## Instalación
+
+1. **Clonar el Repositorio:**
+   ```sh
+   git clone https://github.com/elliotsecops/Secure-Fortress-Linux.git
+   cd Secure-Fortress-Linux
+   ```
+
+2. **Ejecutar el Script de Instalación de Dependencias:**
+   ```sh
+   sudo ./install_dependencies.sh
+   ```
+
+### Script de Instalación de Dependencias (`install_dependencies.sh`)
+
+El script `install_dependencies.sh` automatiza la descarga e instalación de dependencias para Secure Fortress Linux, incluyendo Python 3.x, Ansible y el Agente Wazuh. También verifica las instalaciones y proporciona registros detallados.
+
+#### Características
+
+- **Instalación Automatizada**: Instala Python 3.x, Ansible y el Agente Wazuh.
+- **Confirmación del Usuario**: Solicita la confirmación del usuario antes de instalar cada dependencia.
+- **Modo Verboso**: Proporciona una salida detallada durante el proceso de instalación.
+- **Modo de Prueba**: Muestra qué acciones se tomarían sin realizarlas.
+- **Manejo de Errores**: Incluye un manejo de errores robusto y funciones de limpieza.
+- **Copia de Seguridad de Configuración**: Realiza una copia de seguridad de los archivos de configuración importantes antes de realizar cambios.
+- **Verificación de Versiones**: Verifica las versiones de los paquetes instalados.
+- **Verificación del Estado del Servicio**: Verifica el estado del servicio del Agente Wazuh.
+
+#### Prerrequisitos
+
+- Privilegios de root o sudo.
+- Conexión a Internet.
+
+#### Uso
+
+1. **Hacer el Script Ejecutable**:
+   ```sh
+   chmod +x install_dependencies.sh
+   ```
+
+2. **Ejecutar el Script**:
+   ```sh
+   sudo ./install_dependencies.sh
+   ```
+
+#### Opciones
+
+- `-v, --verbose`: Habilitar salida detallada.
+- `-d, --dry-run`: Mostrar qué acciones se tomarían sin realizarlas.
+- `-h, --help`: Mostrar este mensaje de ayuda.
+
+#### Comandos de Ejemplo
+
+- **Instalar Dependencias con Salida Detallada**:
+  ```sh
+  sudo ./install_dependencies.sh --verbose
+  ```
+
+- **Prueba**:
+  ```sh
+  sudo ./install_dependencies.sh --dry-run
+  ```
+
+- **Mostrar Ayuda**:
+  ```sh
+  sudo ./install_dependencies.sh --help
+  ```
+
+#### Solución de Problemas
+
+##### Problemas Comunes
+
+1. **Agente Wazuh No Funcionando**:
+   - Asegúrate de que el servicio del Agente Wazuh esté iniciado:
+     ```sh
+     sudo systemctl start wazuh-agent
+     ```
+   - Verifica el estado del servicio:
+     ```sh
+     sudo systemctl status wazuh-agent
+     ```
+
+2. **Advertencias de Múltiples Repositorios**:
+   - Asegúrate de que el repositorio de Wazuh no se haya añadido múltiples veces. El script ahora verifica la línea exacta del repositorio antes de añadirla.
+
+3. **Comando No Encontrado**:
+   - Asegúrate de que todas las dependencias necesarias estén instaladas. El script solicitará la instalación si falta alguna.
+
+##### Registros
+
+- El script registra todas las acciones en `install_dependencies.log`. Revisa este archivo para obtener información detallada sobre el proceso de instalación.
+
+## Uso
+
+1. **Personalizar la Configuración:**
+   - Modifica el archivo `templates/wazuh-agent-config.j2` para que coincida con la configuración de tu servidor Wazuh.
+   - Ajusta el script `scripts/linux_hardening.sh` para que se adapte a tus requisitos específicos de fortalecimiento.
+
+2. **Ejecutar el Playbook:**
+   ```sh
+   ansible-playbook playbooks/playbook_hardening.yml
+   ```
+
+3. **Revisar los Registros:**
+   - Verifica el archivo `logs/deployment.log` para obtener registros detallados del proceso de fortalecimiento.
+
+## Script Bash (`linux_hardening.sh`)
+
+El script `linux_hardening.sh` realiza varias tareas de fortalecimiento de seguridad en el sistema. Aquí tienes un desglose de lo que hace:
+
+1. **Actualización del Sistema:**
+   - Actualiza la lista de paquetes y actualiza todos los paquetes instalados a sus últimas versiones.
+
+2. **Configuración del Firewall:**
+   - Configura UFW (Uncomplicated Firewall) para bloquear todo el tráfico entrante por defecto y permitir todo el tráfico saliente.
+   - Permite el tráfico SSH.
+   - Habilita el firewall UFW.
+
+3. **Deshabilitación de Servicios:**
+   - Deshabilita servicios innecesarios como `avahi-daemon`, `cups` y `nfs-server`.
+
+4. **Seguridad de Contraseñas:**
+   - Mejora la seguridad de las contraseñas estableciendo una longitud mínima de contraseña de 12 caracteres y requiriendo al menos cuatro clases de caracteres (por ejemplo, mayúsculas, minúsculas, dígitos, caracteres especiales).
+
+5. **Configuración de Auditd:**
+   - Configura `auditd` para monitorear cambios en archivos críticos como `/etc/passwd`, `/etc/shadow`, `/etc/gshadow` y `/etc/group`.
+
+6. **Permisos de Archivos y Directorios:**
+   - Establece permisos básicos en archivos y directorios sensibles.
+
+7. **Configuración de SSH:**
+   - Deshabilita el inicio de sesión root a través de SSH.
+   - Deshabilita la autenticación por contraseña para SSH, forzando el uso de claves SSH.
+   - Reinicia el servicio SSH para aplicar la nueva configuración.
+
+## Correlación entre Componentes
+
+Los componentes de Secure Fortress Linux trabajan juntos para asegurar un fortalecimiento y monitoreo completo del sistema:
+
+1. **Configuración de Ansible (`ansible.cfg`):**
+   - Configura el entorno y el comportamiento para Ansible, incluyendo la gestión de inventarios, configuraciones de usuario remoto, registro, escalado de privilegios y opciones de conexión SSH.
+
+2. **Script Bash (`linux_hardening.sh`):**
+   - Realiza las tareas iniciales de fortalecimiento en el sistema, como actualizar el sistema, configurar el firewall y asegurar SSH.
+
+3. **Plantilla de Configuración del Agente Wazuh (`wazuh-agent-config.j2`):**
+   - Configura el agente Wazuh para monitorear y alertar sobre eventos relacionados con la seguridad, como la detección de rootkits, el monitoreo de integridad de archivos y la recolección de logs.
+
+4. **Playbook de Ansible (`playbook_hardening.yml`):**
+   - Orquesta la ejecución del script Bash y la configuración del agente Wazuh. Utiliza la plantilla `wazuh-agent-config.j2` para generar el archivo de configuración del agente Wazuh y lo aplica a los hosts objetivo.
+     
+**El script Bash `linux_hardening.sh` realiza las tareas iniciales de fortalecimiento en el sistema, mientras que la plantilla `wazuh-agent-config.j2` configura el agente Wazuh para monitorear y alertar sobre eventos relacionados con la seguridad. El playbook de Ansible (`playbook_hardening.yml`) orquesta la ejecución de estas tareas, asegurando un proceso de fortalecimiento y monitoreo automatizado y fluido.**
+
+## Contribuir
+
+¡Las contribuciones son bienvenidas! Por favor, consulta nuestra [Guía de Contribución](CONTRIBUTING.md) para más detalles.
+
+## Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+---
+
+# Secure Fortress Linux (ENG)
 
 Secure Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging Ansible for configuration management and Wazuh for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
 
