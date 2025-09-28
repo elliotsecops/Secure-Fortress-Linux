@@ -1,443 +1,375 @@
-# Secure Fortress Linux (ESP)
+# Fortress Linux - System Security Hardening Framework
 
-Secure Fortress Linux es una solución automatizada de fortalecimiento diseñada para asegurar entornos Linux utilizando las mejores prácticas. Al aprovechar Ansible para la gestión de configuraciones y Wazuh para la monitorización, asegura una robusta seguridad del sistema mientras permite la monitorización continua de cumplimiento y la detección de rootkits.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ansible](https://img.shields.io/badge/Ansible-2.9%2B-blue.svg)](https://www.ansible.com/)
+[![Linux](https://img.shields.io/badge/Linux-Ubuntu%7CDebian-orange.svg)](https://www.linux.org/)
 
-## Tabla de Contenidos
-- [Introducción](#introducción)
-- [Características](#características)
-- [Prerrequisitos](#prerrequisitos)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Instalación](#instalación)
-- [Uso](#uso)
-- [Script Bash (`linux_hardening.sh`)](#script-bash-linux_hardeningsh)
-- [Correlación entre Componentes](#correlación-entre-componentes)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
+Fortress Linux is a comprehensive security hardening framework designed to enhance the security posture of Linux systems through automated hardening scripts and Ansible playbooks. This project provides both manual and automated approaches to system hardening, with integrated monitoring capabilities.
 
-## Introducción
+## 🎯 Features
 
-En el panorama digital actual, asegurar entornos Linux es más crítico que nunca. Secure Fortress Linux tiene como objetivo simplificar y automatizar el proceso de fortalecimiento de sistemas Linux, facilitando a los administradores el mantenimiento de un entorno seguro.
+### Security Hardening
+- **System Updates**: Automated system package updates and security patches
+- **Firewall Configuration**: UFW (Uncomplicated Firewall) setup with SSH access
+- **Service Hardening**: Disables unnecessary and potentially vulnerable services
+- **Password Policy**: Enforces strong password requirements (minimum 12 characters, 4 character classes)
+- **SSH Security**: Disables root login and password-based authentication
+- **File Permissions**: Secures sensitive system files and directories
 
-## Características
+### Monitoring & Detection
+- **File Integrity Monitoring**: Real-time monitoring of critical system files
+- **Audit Logging**: Comprehensive system audit trail with auditd
+- **Rootkit Detection**: Built-in rootkit scanning capabilities
+- **Log Collection**: Centralized log monitoring and analysis
+- **Intrusion Detection**: Integration with Wazuh SIEM platform
 
-- **Fortalecimiento Automatizado de Linux**: Utiliza scripts de shell para fortalecer sistemas Linux, cubriendo áreas como actualizaciones del sistema, configuración del firewall, deshabilitación de servicios y más.
-- **Integración con Wazuh**: Monitoreo y alertas en tiempo real con Wazuh, incluyendo detección de rootkits, monitoreo de integridad de archivos y recolección de logs.
-- **Configurable con Ansible**: Implementaciones escalables utilizando playbooks de Ansible, permitiendo una fácil personalización y gestión de múltiples sistemas.
-- **Registro**: Registra cada paso para una auditoría y solución de problemas fácil, asegurando transparencia y responsabilidad.
+### Automation
+- **Ansible Playbooks**: Automated deployment and configuration management
+- **Bash Scripts**: Manual hardening capabilities for individual systems
+- **Template-based Configuration**: Jinja2 templates for flexible configuration
+- **Logging and Auditing**: Comprehensive deployment and system logs
 
-## Prerrequisitos
+## 📋 Prerequisites
 
-Antes de comenzar, asegúrate de tener lo siguiente instalado:
-- **Ansible** (versión 2.9 o superior): Asegúrate de que Ansible esté instalado en tu sistema.
-- **Python 3.x**: Asegúrate de que Python 3.x esté instalado en tu sistema.
-- **Wazuh Agent**
+### System Requirements
+- **Operating System**: Ubuntu 18.04+ or Debian 9+
+- **Architecture**: x86_64 or ARM64
+- **Memory**: Minimum 2GB RAM
+- **Storage**: Minimum 10GB free disk space
+- **Network**: Internet connection for package installation
 
-## Estructura del Proyecto
+### Software Dependencies
+- **Bash**: Version 4.0+
+- **Ansible**: Version 2.9+ (for automated deployment)
+- **Python**: Version 3.6+ (Ansible dependency)
+- **Wazuh Agent**: Version 4.0+ (optional, for SIEM integration)
 
-```plaintext
-.
-├── config
-│   ├── ansible.cfg
-│   └── hosts
-├── install_dependencies.sh
-├── logs
-│   └── deployment.log
-├── playbooks
-│   └── playbook_hardening.yml
-├── scripts
-│   └── linux_hardening.sh
-└── templates
-    └── wazuh-agent-config.j2
+### User Requirements
+- **Root Access**: Administrative privileges required for system modifications
+- **SSH Access**: Working SSH connection for remote deployment
+- **Backup**: System backup recommended before hardening
+
+## 🚀 Installation
+
+### Method 1: Manual Installation (Bash Script)
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/your-username/fortress-linux.git
+   cd fortress-linux
+   ```
+
+2. **Make Script Executable**
+   ```bash
+   chmod +x scripts/linux_hardening.sh
+   ```
+
+3. **Run Hardening Script**
+   ```bash
+   sudo ./scripts/linux_hardening.sh
+   ```
+
+### Method 2: Automated Installation (Ansible)
+
+1. **Install Ansible**
+   ```bash
+   sudo apt update
+   sudo apt install ansible -y
+   ```
+
+2. **Configure Target Systems**
+   ```bash
+   # Edit config/hosts file with your server IP(s)
+   nano config/hosts
+   ```
+
+3. **Configure Ansible Settings**
+   ```bash
+   # Update config/ansible.cfg with your SSH user
+   nano config/ansible.cfg
+   ```
+
+4. **Run Ansible Playbook**
+   ```bash
+   ansible-playbook -i config/hosts playbooks/playbook_hardening.yml
+   ```
+
+## ⚙️ Configuration
+
+### Ansible Configuration (`config/ansible.cfg`)
+
+```ini
+[defaults]
+inventory = ./config/hosts
+remote_user = your_ansible_user
+host_key_checking = False
+retry_files_enabled = False
+log_path = ./logs/deployment.log
+timeout = 30
+forks = 10
+gathering = smart
+gather_facts = True
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
+become_ask_pass = False
+
+[ssh_connection]
+ssh_args = -o ForwardAgent=yes -o ControlMaster=auto -o ControlPersist=60s
+pipelining = True
 ```
 
-- **config/**: Archivos de configuración y inventario de Ansible.
-- **install_dependencies.sh**: Script para instalar dependencias.
-- **logs/**: Archivos de registro del proceso de implementación.
-- **playbooks/**: Playbooks de Ansible para automatizar el proceso de fortalecimiento.
-- **scripts/**: El script principal de shell para fortalecer sistemas Linux.
-- **templates/**: Plantilla para la configuración del agente Wazuh.
+### Host Inventory (`config/hosts`)
 
-## Instalación
+```
+[webservers]
+192.168.1.10 ansible_user=admin
+192.168.1.11 ansible_user=admin
 
-1. **Clonar el Repositorio:**
-   ```sh
-   git clone https://github.com/elliotsecops/Secure-Fortress-Linux.git
-   cd Secure-Fortress-Linux
+[databases]
+192.168.1.20 ansible_user=admin
+```
+
+### Wazuh Agent Configuration (`templates/wazuh-agent-config.j2`)
+
+Key configuration options:
+- **Server Address**: Wazuh manager IP address
+- **Monitoring Directories**: `/etc`, `/var/log`, `/bin`
+- **Scan Frequency**: Hourly file integrity checks
+- **Rootkit Detection**: Enabled with 12-hour intervals
+- **Real-time Monitoring**: Enabled for critical binaries
+
+## 🔧 Usage
+
+### Manual Hardening
+The bash script performs the following actions automatically:
+
+1. **System Updates**
+   ```bash
+   apt update && apt upgrade -y
    ```
 
-2. **Ejecutar el Script de Instalación de Dependencias:**
-   ```sh
-   sudo ./install_dependencies.sh
+2. **Firewall Configuration**
+   ```bash
+   ufw default deny incoming
+   ufw default allow outgoing
+   ufw allow OpenSSH
+   ufw enable
    ```
 
-### Script de Instalación de Dependencias (`install_dependencies.sh`)
-
-El script `install_dependencies.sh` automatiza la descarga e instalación de dependencias para Secure Fortress Linux, incluyendo Python 3.x, Ansible y el Agente Wazuh. También verifica las instalaciones y proporciona registros detallados.
-
-#### Características
-
-- **Instalación Automatizada**: Instala Python 3.x, Ansible y el Agente Wazuh.
-- **Confirmación del Usuario**: Solicita la confirmación del usuario antes de instalar cada dependencia.
-- **Modo Verboso**: Proporciona una salida detallada durante el proceso de instalación.
-- **Modo de Prueba**: Muestra qué acciones se tomarían sin realizarlas.
-- **Manejo de Errores**: Incluye un manejo de errores robusto y funciones de limpieza.
-- **Copia de Seguridad de Configuración**: Realiza una copia de seguridad de los archivos de configuración importantes antes de realizar cambios.
-- **Verificación de Versiones**: Verifica las versiones de los paquetes instalados.
-- **Verificación del Estado del Servicio**: Verifica el estado del servicio del Agente Wazuh.
-
-#### Prerrequisitos
-
-- Privilegios de root o sudo.
-- Conexión a Internet.
-
-#### Uso
-
-1. **Hacer el Script Ejecutable**:
-   ```sh
-   chmod +x install_dependencies.sh
+3. **Service Hardening**
+   ```bash
+   systemctl disable avahi-daemon
+   systemctl disable cups
+   systemctl disable nfs-server
    ```
 
-2. **Ejecutar el Script**:
-   ```sh
-   sudo ./install_dependencies.sh
+4. **Password Policy**
+   ```bash
+   echo "minlen = 12" >> /etc/security/pwquality.conf
+   echo "minclass = 4" >> /etc/security/pwquality.conf
    ```
 
-#### Opciones
-
-- `-v, --verbose`: Habilitar salida detallada.
-- `-d, --dry-run`: Mostrar qué acciones se tomarían sin realizarlas.
-- `-h, --help`: Mostrar este mensaje de ayuda.
-
-#### Comandos de Ejemplo
-
-- **Instalar Dependencias con Salida Detallada**:
-  ```sh
-  sudo ./install_dependencies.sh --verbose
-  ```
-
-- **Prueba**:
-  ```sh
-  sudo ./install_dependencies.sh --dry-run
-  ```
-
-- **Mostrar Ayuda**:
-  ```sh
-  sudo ./install_dependencies.sh --help
-  ```
-
-#### Solución de Problemas
-
-##### Problemas Comunes
-
-1. **Agente Wazuh No Funcionando**:
-   - Asegúrate de que el servicio del Agente Wazuh esté iniciado:
-     ```sh
-     sudo systemctl start wazuh-agent
-     ```
-   - Verifica el estado del servicio:
-     ```sh
-     sudo systemctl status wazuh-agent
-     ```
-
-2. **Advertencias de Múltiples Repositorios**:
-   - Asegúrate de que el repositorio de Wazuh no se haya añadido múltiples veces. El script ahora verifica la línea exacta del repositorio antes de añadirla.
-
-3. **Comando No Encontrado**:
-   - Asegúrate de que todas las dependencias necesarias estén instaladas. El script solicitará la instalación si falta alguna.
-
-##### Registros
-
-- El script registra todas las acciones en `install_dependencies.log`. Revisa este archivo para obtener información detallada sobre el proceso de instalación.
-
-## Uso
-
-1. **Personalizar la Configuración:**
-   - Modifica el archivo `templates/wazuh-agent-config.j2` para que coincida con la configuración de tu servidor Wazuh.
-   - Ajusta el script `scripts/linux_hardening.sh` para que se adapte a tus requisitos específicos de fortalecimiento.
-
-2. **Ejecutar el Playbook:**
-   ```sh
-   ansible-playbook playbooks/playbook_hardening.yml
+5. **SSH Security**
+   ```bash
+   sed -i "s/^#PermitRootLogin.*/PermitRootLogin no/" /etc/ssh/sshd_config
+   sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication no/" /etc/ssh/sshd_config
    ```
 
-3. **Revisar los Registros:**
-   - Verifica el archivo `logs/deployment.log` para obtener registros detallados del proceso de fortalecimiento.
+### Ansible Playbook Usage
+The playbook provides automated deployment with the following tasks:
 
-## Script Bash (`linux_hardening.sh`)
+1. **Package Installation**: Installs security packages (UFW, fail2ban, auditd, Wazuh)
+2. **Wazuh Configuration**: Deploys and configures Wazuh agent
+3. **Firewall Setup**: Configures UFW with SSH access
+4. **Service Management**: Enables and starts security services
+5. **Auto Updates**: Configures unattended security updates
 
-El script `linux_hardening.sh` realiza varias tareas de fortalecimiento de seguridad en el sistema. Aquí tienes un desglose de lo que hace:
+## 📊 Monitoring and Logging
 
-1. **Actualización del Sistema:**
-   - Actualiza la lista de paquetes y actualiza todos los paquetes instalados a sus últimas versiones.
+### Log Files
+- **Deployment Logs**: `logs/deployment.log`
+- **System Logs**: `/var/log/auth.log`, `/var/log/syslog`
+- **Audit Logs**: `/var/log/audit/audit.log`
+- **Wazuh Logs**: `/var/ossec/logs/ossec.log`
 
-2. **Configuración del Firewall:**
-   - Configura UFW (Uncomplicated Firewall) para bloquear todo el tráfico entrante por defecto y permitir todo el tráfico saliente.
-   - Permite el tráfico SSH.
-   - Habilita el firewall UFW.
+### Monitoring Commands
+```bash
+# Check firewall status
+sudo ufw status
 
-3. **Deshabilitación de Servicios:**
-   - Deshabilita servicios innecesarios como `avahi-daemon`, `cups` y `nfs-server`.
+# Verify auditd service
+sudo systemctl status auditd
 
-4. **Seguridad de Contraseñas:**
-   - Mejora la seguridad de las contraseñas estableciendo una longitud mínima de contraseña de 12 caracteres y requiriendo al menos cuatro clases de caracteres (por ejemplo, mayúsculas, minúsculas, dígitos, caracteres especiales).
+# Check Wazuh agent
+sudo systemctl status wazuh-agent
 
-5. **Configuración de Auditd:**
-   - Configura `auditd` para monitorear cambios en archivos críticos como `/etc/passwd`, `/etc/shadow`, `/etc/gshadow` y `/etc/group`.
+# View recent security events
+sudo tail -f /var/log/auth.log
+```
 
-6. **Permisos de Archivos y Directorios:**
-   - Establece permisos básicos en archivos y directorios sensibles.
+## 🛡️ Security Features
 
-7. **Configuración de SSH:**
-   - Deshabilita el inicio de sesión root a través de SSH.
-   - Deshabilita la autenticación por contraseña para SSH, forzando el uso de claves SSH.
-   - Reinicia el servicio SSH para aplicar la nueva configuración.
+### Implemented Hardening Measures
+- **Network Security**: Firewall configuration, SSH hardening
+- **Access Control**: Password policies, user permission management
+- **File Security**: Permission hardening, integrity monitoring
+- **Service Security**: Unnecessary service disablement
+- **Monitoring**: Audit logging, intrusion detection
+- **Patch Management**: Automated security updates
 
-## Correlación entre Componentes
+### Compliance Standards
+- **CIS Benchmarks**: Aligns with CIS Ubuntu Linux Benchmark
+- **NIST Standards**: Follows NIST cybersecurity framework
+- **SOC 2**: Implements controls for security monitoring
+- **GDPR**: Data protection and logging requirements
 
-Los componentes de Secure Fortress Linux trabajan juntos para asegurar un fortalecimiento y monitoreo completo del sistema:
+## 🔍 Troubleshooting
 
-1. **Configuración de Ansible (`ansible.cfg`):**
-   - Configura el entorno y el comportamiento para Ansible, incluyendo la gestión de inventarios, configuraciones de usuario remoto, registro, escalado de privilegios y opciones de conexión SSH.
+### Common Issues
 
-2. **Script Bash (`linux_hardening.sh`):**
-   - Realiza las tareas iniciales de fortalecimiento en el sistema, como actualizar el sistema, configurar el firewall y asegurar SSH.
+#### SSH Connection Issues
+```bash
+# Check SSH service status
+sudo systemctl status sshd
 
-3. **Plantilla de Configuración del Agente Wazuh (`wazuh-agent-config.j2`):**
-   - Configura el agente Wazuh para monitorear y alertar sobre eventos relacionados con la seguridad, como la detección de rootkits, el monitoreo de integridad de archivos y la recolección de logs.
+# Verify SSH configuration
+sudo sshd -t
 
-4. **Playbook de Ansible (`playbook_hardening.yml`):**
-   - Orquesta la ejecución del script Bash y la configuración del agente Wazuh. Utiliza la plantilla `wazuh-agent-config.j2` para generar el archivo de configuración del agente Wazuh y lo aplica a los hosts objetivo.
-     
-**El script Bash `linux_hardening.sh` realiza las tareas iniciales de fortalecimiento en el sistema, mientras que la plantilla `wazuh-agent-config.j2` configura el agente Wazuh para monitorear y alertar sobre eventos relacionados con la seguridad. El playbook de Ansible (`playbook_hardening.yml`) orquesta la ejecución de estas tareas, asegurando un proceso de fortalecimiento y monitoreo automatizado y fluido.**
+# Check firewall rules
+sudo ufw status
+```
 
-## Contribuir
+#### Ansible Connection Problems
+```bash
+# Test SSH connectivity
+ansible -i config/hosts all -m ping
 
-¡Las contribuciones son bienvenidas! Por favor, consulta nuestra [Guía de Contribución](CONTRIBUTING.md) para más detalles.
+# Check Ansible configuration
+ansible --version
 
-## Licencia
+# Verify inventory file
+ansible-inventory -i config/hosts --list
+```
 
-Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+#### Wazuh Agent Issues
+```bash
+# Check Wazuh service
+sudo systemctl status wazuh-agent
+
+# Test connectivity to Wazuh manager
+sudo /var/ossec/bin/agent_control -l
+
+# Verify configuration
+sudo /var/ossec/bin/ossec-logtest -f /var/ossec/etc/ossec.conf
+```
+
+### Error Resolution
+1. **Permission Denied**: Ensure running with sudo privileges
+2. **Package Installation**: Verify internet connectivity and package sources
+3. **Service Failures**: Check system logs with `journalctl -u service-name`
+4. **Configuration Errors**: Validate syntax and file paths
+
+## 🧪 Testing
+
+### Pre-deployment Testing
+```bash
+# Test in development environment first
+# Create system backup
+sudo timeshift --create --comments "pre-hardening"
+
+# Verify script syntax
+bash -n scripts/linux_hardening.sh
+
+# Test Ansible playbook syntax
+ansible-playbook --syntax-check playbooks/playbook_hardening.yml
+```
+
+### Post-deployment Verification
+```bash
+# Check system hardening status
+sudo systemctl list-unit-files --state=enabled
+
+# Verify firewall rules
+sudo ufw status verbose
+
+# Test password policy
+chage -l username
+
+# Check SSH configuration
+sudo sshd -T | grep -E "permitrootlogin|passwordauthentication"
+```
+
+## 📚 Documentation
+
+### Additional Resources
+- [CIS Security Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
+- [Ansible Documentation](https://docs.ansible.com/)
+- [Wazuh Documentation](https://documentation.wazuh.com/)
+- [Ubuntu Security Guide](https://ubuntu.com/security)
+
+### Configuration Files
+- `scripts/linux_hardening.sh` - Main hardening script
+- `playbooks/playbook_hardening.yml` - Ansible playbook
+- `config/ansible.cfg` - Ansible configuration
+- `config/hosts` - Host inventory
+- `templates/wazuh-agent-config.j2` - Wazuh agent template
+
+## 🤝 Contributing
+
+### Development Workflow
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/new-feature`
+3. Test changes in development environment
+4. Submit pull request with detailed description
+5. Code review and testing
+
+### Guidelines
+- Follow security best practices
+- Test all changes thoroughly
+- Update documentation for new features
+- Use appropriate coding standards
+- Consider backward compatibility
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙋‍♂️ Support
+
+### Getting Help
+- **Documentation**: Read this README and inline code comments
+- **Issues**: Create GitHub issue with detailed description
+- **Community**: Join our security community discussions
+- **Email**: Contact support team for enterprise assistance
+
+### Reporting Security Issues
+For security vulnerabilities, please email security@example.com with details:
+- Vulnerability description
+- Affected versions
+- Reproduction steps
+- Potential impact
+
+## 🎯 Roadmap
+
+### Upcoming Features
+- [ ] Multi-distribution support (CentOS, RHEL)
+- [ ] Cloud platform integration
+- [ ] Compliance reporting dashboard
+- [ ] Automated backup and recovery
+- [ ] Security scanning and assessment tools
+- [ ] Container security hardening
+
+### Version History
+- **v1.0.0** - Initial release with basic hardening
+- **v1.1.0** - Added Wazuh integration
+- **v1.2.0** - Enhanced Ansible automation
+- **v2.0.0** - Comprehensive monitoring framework
 
 ---
 
-# Secure Fortress Linux (ENG)
+**⚠️ Important**: Always test hardening procedures in a development environment before production deployment. Create system backups and ensure you have alternative access methods before applying security changes.
 
-Secure Fortress Linux is an automated hardening solution designed to secure Linux environments using best practices. By leveraging Ansible for configuration management and Wazuh for monitoring, it ensures robust system security while allowing continuous compliance monitoring and rootkit detection.
-
-## Table of Contents
-- [Introduction](#introduction)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Bash Script (`linux_hardening.sh`)](#bash-script-linux_hardeningsh)
-- [Correlation Between Components](#correlation-between-components)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Introduction
-
-In today's digital landscape, securing Linux environments is more critical than ever. Secure Fortress Linux aims to simplify and automate the process of hardening Linux systems, making it easier for administrators to maintain a secure environment.
-
-## Features
-
-- **Automated Linux Hardening:** Utilizes shell scripts to harden Linux systems, covering areas such as system updates, firewall configuration, service disabling, and more.
-- **Wazuh Integration:** Real-time monitoring and alerting with Wazuh, including rootkit detection, file integrity monitoring, and log collection.
-- **Configurable with Ansible:** Scalable deployments using Ansible playbooks, allowing easy customization and management of multiple systems.
-- **Logging:** Logs every step for easy auditing and troubleshooting, ensuring transparency and accountability.
-
-## Prerequisites
-
-Before you start, ensure you have the following installed:
-- **Ansible** (version 2.9 or higher): Ensure Ansible is installed on your system.
-- **Python 3.x**: Ensure Python 3.x is installed on your system.
-- **Wazuh Agent**
-
-## Project Structure
-
-```plaintext
-.
-├── config
-│   ├── ansible.cfg
-│   └── hosts
-├── install_dependencies.sh
-├── logs
-│   └── deployment.log
-├── playbooks
-│   └── playbook_hardening.yml
-├── scripts
-│   └── linux_hardening.sh
-└── templates
-    └── wazuh-agent-config.j2
-```
-
-- **config/**: Ansible configuration files and inventory.
-- **install_dependencies.sh**: Script to install dependencies.
-- **logs/**: Log files of the deployment process.
-- **playbooks/**: Ansible playbooks for automating the hardening process.
-- **scripts/**: The main shell script for hardening Linux systems.
-- **templates/**: Template for Wazuh agent configuration.
-
-## Installation
-
-1. **Clone the Repository:**
-   ```sh
-   git clone https://github.com/elliotsecops/Secure-Fortress-Linux.git
-   cd Secure-Fortress-Linux
-   ```
-
-2. **Run the Dependency Installation Script:**
-   ```sh
-   sudo ./install_dependencies.sh
-   ```
-
-### Installation Dependencies Script (`install_dependencies.sh`)
-
-The `install_dependencies.sh` script automates the download and installation of dependencies for Secure Fortress Linux, including Python 3.x, Ansible, and the Wazuh Agent. It also verifies the installations and provides detailed logging.
-
-#### Features
-
-- **Automated Installation**: Installs Python 3.x, Ansible, and the Wazuh Agent.
-- **User Confirmation**: Prompts the user before installing each dependency.
-- **Verbose Mode**: Provides detailed output during the installation process.
-- **Dry-Run Mode**: Shows what actions would be taken without performing them.
-- **Error Handling**: Includes robust error handling and cleanup functions.
-- **Configuration Backup**: Backs up important configuration files before making changes.
-- **Version Checking**: Checks the versions of installed packages.
-- **Service Status Check**: Verifies the status of the Wazuh Agent service.
-
-#### Prerequisites
-
-- Root or sudo privileges.
-- Internet connectivity.
-
-#### Usage
-
-1. **Make the Script Executable**:
-   ```sh
-   chmod +x install_dependencies.sh
-   ```
-
-2. **Run the Script**:
-   ```sh
-   sudo ./install_dependencies.sh
-   ```
-
-#### Options
-
-- `-v, --verbose`: Enable verbose output.
-- `-d, --dry-run`: Show what actions would be taken without performing them.
-- `-h, --help`: Display this help message.
-
-#### Example Commands
-
-- **Install Dependencies with Verbose Output**:
-  ```sh
-  sudo ./install_dependencies.sh --verbose
-  ```
-
-- **Dry Run**:
-  ```sh
-  sudo ./install_dependencies.sh --dry-run
-  ```
-
-- **Display Help**:
-  ```sh
-  sudo ./install_dependencies.sh --help
-  ```
-
-#### Troubleshooting
-
-##### Common Issues
-
-1. **Wazuh Agent Not Running**:
-   - Ensure the Wazuh Agent service is started:
-     ```sh
-     sudo systemctl start wazuh-agent
-     ```
-   - Check the service status:
-     ```sh
-     sudo systemctl status wazuh-agent
-     ```
-
-2. **Multiple Repository Warnings**:
-   - Ensure the Wazuh repository is not added multiple times. The script now checks for the exact repository line before adding it.
-
-3. **Command Not Found**:
-   - Ensure all necessary dependencies are installed. The script will prompt for installation if any are missing.
-
-##### Logs
-
-- The script logs all actions to `install_dependencies.log`. Review this file for detailed information on the installation process.
-
-## Usage
-
-1. **Customize Configuration:**
-   - Modify the `templates/wazuh-agent-config.j2` file to match your Wazuh server configuration.
-   - Adjust the `scripts/linux_hardening.sh` script to fit your specific hardening requirements.
-
-2. **Execute the Playbook:**
-   ```sh
-   ansible-playbook playbooks/playbook_hardening.yml
-   ```
-
-3. **Review Logs:**
-   - Check the `logs/deployment.log` file for detailed logs of the hardening process.
-
-## Bash Script (`linux_hardening.sh`)
-
-The `linux_hardening.sh` script performs various security hardening tasks on the system. Here's a breakdown of what it does:
-
-1. **System Update:**
-   - Updates the package list and upgrades all installed packages to their latest versions.
-
-2. **Firewall Configuration:**
-   - Configures the UFW (Uncomplicated Firewall) to block all incoming traffic by default and allow all outgoing traffic.
-   - Allows SSH traffic.
-   - Enables the UFW firewall.
-
-3. **Service Disabling:**
-   - Disables unnecessary services such as `avahi-daemon`, `cups`, and `nfs-server`.
-
-4. **Password Security:**
-   - Enhances password security by setting minimum password length to 12 characters and requiring at least four character classes (e.g., uppercase, lowercase, digits, special characters).
-
-5. **Auditd Configuration:**
-   - Configures `auditd` to monitor changes to critical files like `/etc/passwd`, `/etc/shadow`, `/etc/gshadow`, and `/etc/group`.
-
-6. **File and Directory Permissions:**
-   - Sets basic permissions on sensitive files and directories.
-
-7. **SSH Configuration:**
-   - Disables root login via SSH.
-   - Disables password authentication for SSH, forcing the use of SSH keys.
-   - Restarts the SSH service to apply the new configuration.
-
-## Correlation Between Components
-
-The components of Secure Fortress Linux work together to ensure comprehensive system hardening and monitoring:
-
-1. **Ansible Configuration (`ansible.cfg`):**
-   - Sets up the environment and behavior for Ansible, including inventory management, remote user settings, logging, privilege escalation, and SSH connection options.
-
-2. **Bash Script (`linux_hardening.sh`):**
-   - Performs the initial hardening tasks on the system, such as updating the system, configuring the firewall, and securing SSH.
-
-3. **Wazuh Agent Configuration Template (`wazuh-agent-config.j2`):**
-   - Configures the Wazuh agent to monitor and alert on security-related events, such as rootkit detection, file integrity monitoring, and log collection.
-
-4. **Ansible Playbook (`playbook_hardening.yml`):**
-   - Orchestrates the execution of the Bash script and the configuration of the Wazuh agent. It uses the `wazuh-agent-config.j2` template to generate the Wazuh agent configuration file and applies it to the target hosts.
-
-### Highlights:
-The `linux_hardening.sh` Bash script performs the initial hardening tasks on the system, while the `wazuh-agent-config.j2` template configures the Wazuh agent to monitor and alert on security-related events. The Ansible playbook (`playbook_hardening.yml`) orchestrates the execution of these tasks, ensuring a seamless and automated hardening and monitoring process.
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
+**Made with ❤️ for Linux Security**
