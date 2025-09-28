@@ -1,0 +1,217 @@
+<agent_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_ip }}</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <profile>linux</profile>
+    </server>
+  </client>
+
+  <!-- Vulnerability Detection -->
+  <vulnerability-detector>
+    <enabled>yes</enabled>
+    <interval>5m</interval>
+    <min_full_scan_interval>6h</min_full_scan_interval>
+    <retry_interval>5m</retry_interval>
+    <run_on_start>yes</run_on_start>
+    <provider name="canonical">
+      <enabled>yes</enabled>
+      <os>Ubuntu-20.04</os>
+      <os>Ubuntu-22.04</os>
+      <os>Ubuntu-24.04</os>
+    </provider>
+    <provider name="debian">
+      <enabled>yes</enabled>
+      <os>Debian-11</os>
+      <os>Debian-12</os>
+    </provider>
+    <provider name="redhat">
+      <enabled>yes</enabled>
+      <os>8</os>
+      <os>9</os>
+    </provider>
+  </vulnerability-detector>
+
+  <!-- Rootcheck Settings -->
+  <rootkit>
+    <disabled>no</disabled>
+    <rootkit_files>/var/ossec/etc/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/rootkit_trojans.txt</rootkit_trojans>
+    <scanall>no</scanall>
+    <frequency>3600</frequency> <!-- Reduce to 1 hour for more frequent checks -->
+  </rootkit>
+
+  <!-- Syscheck Settings - Updated for comprehensive monitoring -->
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>3600</frequency> <!-- Scan every 1 hour -->
+    <scan_on_start>yes</scan_on_start>
+
+    <!-- Critical system directories with real-time monitoring -->
+    <directories realtime="yes" whodata="yes">/bin</directories>
+    <directories realtime="yes" whodata="yes">/sbin</directories>
+    <directories realtime="yes" whodata="yes">/usr/bin</directories>
+    <directories realtime="yes" whodata="yes">/usr/sbin</directories>
+    
+    <!-- Configuration directories -->
+    <directories>/etc</directories>
+    <directories>/usr/etc</directories>
+    
+    <!-- Log directories -->
+    <directories>/var/log</directories>
+    <directories>/var/ossec/logs</directories>
+    
+    <!-- Home directories -->
+    <directories>/root</directories>
+    <directories>/home</directories>
+    
+    <!-- Web directories (if present) -->
+    <directories>/var/www</directories>
+    <directories>/srv/www</directories>
+
+    <!-- File types to check -->
+    <file_limit>
+      <enabled>yes</enabled>
+      <entries>100000</entries>
+    </file_limit>
+
+    <!-- Whodata monitoring settings -->
+    <whodata>
+      <startup>alert_new_processes</startup>
+      <ignore_same_ip>no</ignore_same_ip>
+      <restart_audit>yes</restart_audit>
+    </whodata>
+
+    <!-- Exclude patterns -->
+    <ignore type="sregex">^/proc</ignore>
+    <ignore type="sregex">^/sys</ignore>
+    <ignore type="sregex">^/dev</ignore>
+    <ignore type="sregex">^/var/ossec/queue</ignore>
+    <ignore type="sregex">^/var/ossec/var/multigroups</ignore>
+    <ignore type="sregex">^/var/ossec/queue/agent-groups</ignore>
+    <ignore type="sregex">^/run/docker</ignore>
+    <ignore type="sregex">^/var/lib/docker</ignore>
+    
+    <!-- Additional ignores for common files -->
+    <ignore>/etc/mtab</ignore>
+    <ignore>/etc/hosts.deny</ignore>
+    <ignore>/etc/mail/statistics</ignore>
+    <ignore>/etc/random-seed</ignore>
+    <ignore>/etc/random.seed</ignore>
+    <ignore>/etc/adjtime</ignore>
+    <ignore>/etc/httpd/logs</ignore>
+    <ignore>/etc/utmpx</ignore>
+    <ignore>/etc/wtmpx</ignore>
+    <ignore>/etc/cups/certs</ignore>
+    <ignore>/etc/dumpdates</ignore>
+    <ignore>/etc/php*/fpm/pool.d/www.conf</ignore>
+    <ignore>/etc/postfix/maps</ignore>
+    <ignore>/etc/ansible</ignore>
+    <ignore>/var/lib/net-snmp</ignore>
+
+    <!-- Windows registry settings (not used in Linux but kept for template consistency) -->
+    <registry>
+      <enabled>no</enabled>
+    </registry>
+  </syscheck>
+
+  <!-- Log collection for better monitoring -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/auth.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/syslog</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/kern.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/dpkg.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/apt/history.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/unattended-upgrades/unattended-upgrades.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/fail2ban.log</location>
+  </localfile>
+
+  <!-- Command monitoring for security events -->
+  <localfile>
+    <log_format>command</log_format>
+    <command>df -P</command>
+    <frequency>360</frequency>
+    <alias>disk_usage</alias>
+  </localfile>
+
+  <localfile>
+    <log_format>command</log_format>
+    <command>netstat -tuln</command>
+    <frequency>360</frequency>
+    <alias>listening_ports</alias>
+  </localfile>
+
+  <localfile>
+    <log_format>command</log_format>
+    <command>last -n 20</command>
+    <frequency>360</frequency>
+    <alias>user_login</alias>
+  </localfile>
+
+  <!-- CDB list for threat intelligence (if available) -->
+  <lists>
+    <list>etc/lists/audit-keys</list>
+  </lists>
+
+  <!-- Active Response Configuration -->
+  <active-response>
+    <disabled>no</disabled>
+    <ca_store>wpk_root.pem</ca_store>
+    <email_notification>yes</email_notification>
+    <smtp_server>localhost</smtp_server>
+    <email_to>admin@example.com</email_to>
+    <email_from>wazuh@example.com</email_from>
+    <subject>Wazuh - Active Response Event</subject>
+  </active-response>
+
+  <!-- Labels for better organization -->
+  <labels>
+    <label key="Environment">Production</label>
+    <label key="Team">Security</label>
+    <label key="Location">{{ ansible_default_ipv4.address }}</label>
+  </labels>
+
+  <!-- Client configuration -->
+  <client>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_restart>yes</auto_restart>
+    <verifyserver>yes</verifyserver>
+    <enrollment>
+      <enabled>yes</enabled>
+      <auto_method>no</auto_method>
+    </enrollment>
+  </client>
+
+  <!-- Logging settings -->
+  <logging>
+    <log_level>info</log_level>
+  </logging>
+
+</agent_config>
