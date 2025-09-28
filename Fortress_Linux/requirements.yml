@@ -1,0 +1,79 @@
+---
+# Ansible collection requirements for Fortress Linux
+collections:
+  # Core Ansible collections
+  - name: ansible.builtin
+    version: ">=2.9.0"
+  - name: ansible.posix
+    version: ">=1.4.0"
+  - name: community.general
+    version: ">=6.0.0"
+
+  # Security-focused collections
+  - name: community.security
+    version: ">=1.0.0"
+  - name: ansible-security
+    version: ">=1.0.0"
+
+  # System administration
+  - name: community.crypto
+    version: ">=2.0.0"
+  - name: community.docker
+    version: ">=3.0.0"
+
+  # Monitoring and logging
+  - name: community.grafana
+    version: ">=1.0.0"
+  - name: community.elasticsearch
+    version: ">=2.0.0"
+
+  # Cloud platform support (optional)
+  - name: amazon.aws
+    version: ">=5.0.0"
+  - name: google.cloud
+    version: ">=1.0.0"
+  - name: azure.azcollection
+    version: ">=1.0.0"
+
+  # Configuration management
+  - name: ansible.utils
+    version: ">=2.8.0"
+
+  # Network security
+  - name: cisco.ios
+    version: ">=4.0.0"
+  - name: cisco.asa
+    version: ">=4.0.0"
+
+  # Windows support (optional)
+  - name: chocolatey.chocolatey
+    version: ">=1.0.0"
+  - name: ansible.windows
+    version: ">=1.12.0"
+
+roles:
+  # Security hardening roles (optional, can be installed separately)
+  - name: dev-sec.os-hardening
+    src: https://github.com/dev-sec/ansible-os-hardening
+    version: "master"
+  - name: dev-sec.ssh-hardening
+    src: https://github.com/dev-sec/ansible-ssh-hardening
+    version: "master"
+  - name: geerlingguy.security
+    src: https://github.com/geerlingguy/ansible-role-security
+    version: "master"
+
+  # Monitoring roles
+  - name: wazuh.wazuh-agent
+    src: https://github.com/wazuh/wazuh-ansible
+    version: "4.x"
+
+  # Firewall management
+  - name: geerlingguy.firewall
+    src: https://github.com/geerlingguy/ansible-role-firewall
+    version: "master"
+
+  # Backup and recovery
+  - name: geerlingguy.backup
+    src: https://github.com/geerlingguy/ansible-role-backup
+    version: "master"
