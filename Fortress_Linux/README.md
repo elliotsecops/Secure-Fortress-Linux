@@ -75,6 +75,323 @@ Fortress Linux is a comprehensive security hardening framework designed to enhan
 - **SSH Access**: Working SSH connection for remote deployment
 - **Backup**: System backup recommended before hardening (automatically created)
 
+## 💻 Minimal Systems Installation
+
+### Overview
+Fortress Linux supports minimal system installations with resource constraints. This section provides optimized installation procedures for systems with limited memory, storage, or processing power.
+
+### Minimal System Requirements
+- **Operating System**: Ubuntu 22.04+ or Debian 12+ (minimal/server variants)
+- **Architecture**: x86_64 or ARM64
+- **Memory**: Minimum 512MB RAM (1GB+ recommended)
+- **Storage**: Minimum 2GB free disk space (5GB+ recommended)
+- **Network**: Internet connection for package installation (can be offline after installation)
+
+### Lightweight Installation Options
+
+#### Option 1: Core Hardening Only
+```bash
+# 1. Run compatibility check
+./scripts/system_check.sh
+
+# 2. Install minimal dependencies only
+sudo apt update
+sudo apt install -y --no-install-recommends \
+    bash \
+    ufw \
+    auditd \
+    systemd \
+    coreutils
+
+# 3. Run core hardening without backup
+sudo ./scripts/linux_hardening.sh --minimal
+```
+
+#### Option 2: Minimal with Backup
+```bash
+# 1. Create compressed backup (minimal)
+sudo ./scripts/backup_restore.sh backup --compress --config-only
+
+# 2. Run lightweight hardening
+sudo ./scripts/linux_hardening.sh --minimal --backup-skip
+
+# 3. Verify critical services only
+sudo systemctl status auditd sshd ufw
+```
+
+#### Option 3: Ansible Minimal Mode
+```bash
+# 1. Install minimal Ansible
+sudo apt update
+sudo apt install -y --no-install-recommends python3 python3-pip
+pip3 install --no-cache-dir ansible-core
+
+# 2. Run minimal playbook
+ansible-playbook -i ansible/inventory/hosts \
+    ansible/playbooks/minimal_hardening.yml \
+    --skip-tags "monitoring,backup,logging"
+```
+
+### Resource Optimization Settings
+
+#### Memory-Constrained Systems
+```bash
+# Create minimal configuration
+cat > /tmp/fortress-minimal.conf << 'EOF'
+# Minimal Fortress Linux Configuration
+ENABLE_BACKUP=false
+ENABLE_COMPRESSION=false
+ENABLE_MONITORING=false
+ENABLE_LOG_ROTATION=false
+MAX_MEMORY_USAGE=256
+SKIP_SERVICES="bluetooth,cups,avahi,rtkit"
+EOF
+
+# Apply minimal configuration
+sudo ./scripts/linux_hardening.sh --config /tmp/fortress-minimal.conf
+```
+
+#### Storage-Constrained Systems
+```bash
+# Minimal backup with compression
+sudo ./scripts/backup_restore.sh backup \
+    --compress \
+    --config-only \
+    --max-size 100M
+
+# Run hardening without backup creation
+sudo ./scripts/linux_hardening.sh \
+    --minimal \
+    --backup-skip \
+    --log-level error
+```
+
+#### Network-Constrained Systems
+```bash
+# Pre-download packages (offline installation)
+sudo apt update
+sudo apt install -d -y ufw auditd ssh
+
+# Run hardening without network calls
+sudo ./scripts/linux_hardening.sh \
+    --minimal \
+    --offline \
+    --skip-updates
+```
+
+### Minimal Configuration Files
+
+#### Lightweight SSH Configuration
+```bash
+# Create minimal SSH config for resource-constrained systems
+sudo tee /etc/ssh/sshd_config.minimal << 'EOF'
+# Minimal SSH Hardening
+Port 22
+Protocol 2
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+MaxSessions 2
+EOF
+```
+
+#### Minimal Firewall Rules
+```bash
+# Essential firewall rules only
+sudo ufw --force reset
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw --force enable
+```
+
+#### Minimal Audit Configuration
+```bash
+# Critical audit rules only
+sudo tee /etc/audit/rules.d/minimal.rules << 'EOF'
+# Essential audit rules for minimal systems
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /var/log/auth.log -p wa -k logins
+-w /bin/sudo -p x -k sudo_commands
+EOF
+
+sudo systemctl restart auditd
+```
+
+### Performance Monitoring for Minimal Systems
+
+#### Memory Usage Check
+```bash
+# Monitor memory usage during hardening
+watch -n 1 'free -h; echo "---"; ps aux --sort=-%mem | head -10'
+```
+
+#### Disk Usage Check
+```bash
+# Monitor disk usage during operations
+watch -n 1 'df -h / /var/log /tmp; echo "---"; du -sh /etc/fortress-backups/'
+```
+
+### Troubleshooting Minimal Systems
+
+#### Common Issues and Solutions
+
+**Issue: Out of Memory Errors**
+```bash
+# Check available memory
+free -h
+
+# Create swap file if needed
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Run hardening with reduced parallelism
+sudo ./scripts/linux_hardening.sh --minimal --threads 1
+```
+
+**Issue: Disk Space Constraints**
+```bash
+# Check disk usage
+df -h
+
+# Clean package cache
+sudo apt clean
+sudo apt autoremove -y
+
+# Remove old backups (keep only latest)
+sudo ./scripts/backup_restore.sh clean 1
+
+# Run with minimal logging
+sudo ./scripts/linux_hardening.sh --minimal --log-level error
+```
+
+**Issue: Slow Performance**
+```bash
+# Run with reduced I/O priority
+sudo ionice -c 3 ./scripts/linux_hardening.sh --minimal
+
+# Disable unnecessary services first
+sudo systemctl disable bluetooth cups avahi-daemon
+sudo systemctl stop bluetooth cups avahi-daemon
+
+# Run in single-user mode if needed
+sudo systemctl isolate rescue
+```
+
+**Issue: Network Constraints**
+```bash
+# Use local package cache
+sudo apt-get -o Acquire::Retries=3 update
+
+# Skip package updates
+sudo ./scripts/linux_hardening.sh --minimal --skip-updates
+
+# Download packages for offline installation
+sudo apt-get download ufw auditd ssh
+```
+
+### Minimal System Verification
+
+#### Quick Health Check
+```bash
+# Verify critical services only
+systemctl is-active auditd sshd ufw
+
+# Check essential security settings
+sudo ufw status
+sudo sshd -T | grep -E "permitrootlogin|passwordauthentication"
+sudo auditctl -l | head -5
+
+# Verify minimal disk usage
+df -h / /var/log /tmp
+```
+
+#### Resource Usage Report
+```bash
+# Generate minimal system report
+{
+    echo "=== Minimal System Status ==="
+    echo "Memory Usage: $(free -h | grep Mem)"
+    echo "Disk Usage: $(df -h / | tail -1)"
+    echo "Active Services: $(systemctl list-units --type=service --state=running | wc -l)"
+    echo "Security Services: $(systemctl is-active auditd sshd ufw 2>/dev/null | grep -c active)"
+    echo "Backup Size: $(du -sh /etc/fortress-backups/ 2>/dev/null || echo 'No backups')"
+} > /tmp/minimal-system-report.txt
+
+cat /tmp/minimal-system-report.txt
+```
+
+### Minimal System Maintenance
+
+#### Automated Cleanup
+```bash
+# Create minimal cleanup script
+cat > /usr/local/bin/fortress-minimal-cleanup.sh << 'EOF'
+#!/bin/bash
+# Minimal system cleanup for Fortress Linux
+
+# Clean package cache
+sudo apt clean 2>/dev/null
+
+# Rotate logs (keep last 2 days)
+sudo find /var/log -name "*.log" -mtime +2 -delete 2>/dev/null
+
+# Clean old backups (keep only latest)
+sudo find /etc/fortress-backups -maxdepth 1 -type d ! -name "fortress-backups" | \
+    sort -r | tail -n +2 | xargs -r sudo rm -rf
+
+# Monitor disk usage
+df -h / | tail -1 | awk '{print $5}' | sed 's/%//' | \
+    awk '{if($1 > 90) print "WARNING: Disk usage above 90%"}'
+EOF
+
+sudo chmod +x /usr/local/bin/fortress-minimal-cleanup.sh
+
+# Add to cron (weekly cleanup)
+echo "0 2 * * 0 /usr/local/bin/fortress-minimal-cleanup.sh" | \
+    sudo crontab -
+```
+
+#### Performance Optimization
+```bash
+# Optimize for minimal systems
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+echo 'vm.dirty_ratio=15' | sudo tee -a /etc/sysctl.conf
+echo 'vm.dirty_background_ratio=5' | sudo tee -a /etc/sysctl.conf
+
+# Apply sysctl changes
+sudo sysctl -p
+```
+
+### Recovery Procedures for Minimal Systems
+
+#### Emergency Restore
+```bash
+# Quick restore from latest backup
+sudo ./scripts/backup_restore.sh restore $(ls -1t /etc/fortress-backups/ | head -1)
+
+# Reset to minimal configuration
+sudo ./scripts/linux_hardening.sh --reset --minimal
+```
+
+#### Manual Recovery
+```bash
+# If automated restore fails, manual recovery steps:
+sudo systemctl restart auditd
+sudo ufw --force enable
+sudo systemctl restart sshd
+
+# Verify basic security
+sudo ufw status
+sudo systemctl status auditd sshd
+```
+
 ## 🚀 Quick Start
 
 ### Option 1: Compatibility Check (Recommended First)

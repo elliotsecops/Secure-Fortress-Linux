@@ -12,6 +12,15 @@ BACKUP_DIR="/etc/fortress-backups/$(date +%Y%m%d_%H%M%S)"
 MIN_DISK_SPACE=1048576  # 1GB in KB
 REQUIRED_SERVICES=("ssh" "ufw" "auditd")
 
+# Minimal mode flags
+MINIMAL_MODE=false
+SKIP_BACKUP=false
+SKIP_UPDATES=false
+OFFLINE_MODE=false
+LOG_LEVEL="info"
+THREADS=4
+CUSTOM_CONFIG=""
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,8 +38,10 @@ log() {
 }
 
 log_info() {
-    log "INFO" "$@"
-    echo -e "${BLUE}[INFO]${NC} $*"
+    if [[ "$LOG_LEVEL" == "info" || "$LOG_LEVEL" == "debug" ]]; then
+        log "INFO" "$@"
+        echo -e "${BLUE}[INFO]${NC} $*"
+    fi
 }
 
 log_success() {
@@ -529,34 +540,173 @@ restore_from_backup() {
     log_success "System restored from backup"
 }
 
+# Display usage information
+show_usage() {
+    cat << EOF
+Fortress Linux - System Security Hardening Script
+
+USAGE:
+    $0 [OPTIONS] [COMMAND]
+
+COMMANDS:
+    (no command)    Run full hardening process
+    restore <dir>   Restore from backup directory
+
+OPTIONS:
+    --minimal              Enable minimal mode (resource-constrained systems)
+    --backup-skip          Skip backup creation
+    --skip-updates         Skip system package updates
+    --offline              Run in offline mode (no network calls)
+    --log-level LEVEL      Set log level (error|warning|info|debug)
+    --threads NUM          Set number of parallel threads (default: 4)
+    --config FILE          Use custom configuration file
+    --help                 Show this help message
+
+MINIMAL MODE EXAMPLES:
+    # Core hardening only
+    $0 --minimal
+
+    # Minimal with no backup
+    $0 --minimal --backup-skip
+
+    # Offline minimal hardening
+    $0 --minimal --offline --skip-updates
+
+    # Resource-constrained with error-only logging
+    $0 --minimal --log-level error --threads 1
+
+EOF
+}
+
+# Parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --minimal)
+                MINIMAL_MODE=true
+                SKIP_BACKUP=true
+                LOG_LEVEL="warning"
+                THREADS=1
+                log_info "Minimal mode enabled"
+                shift
+                ;;
+            --backup-skip)
+                SKIP_BACKUP=true
+                log_info "Backup creation disabled"
+                shift
+                ;;
+            --skip-updates)
+                SKIP_UPDATES=true
+                log_info "System updates skipped"
+                shift
+                ;;
+            --offline)
+                OFFLINE_MODE=true
+                log_info "Offline mode enabled"
+                shift
+                ;;
+            --log-level)
+                LOG_LEVEL="$2"
+                if [[ ! "$LOG_LEVEL" =~ ^(error|warning|info|debug)$ ]]; then
+                    log_error "Invalid log level: $LOG_LEVEL"
+                    exit 1
+                fi
+                log_info "Log level set to: $LOG_LEVEL"
+                shift 2
+                ;;
+            --threads)
+                THREADS="$2"
+                if ! [[ "$THREADS" =~ ^[0-9]+$ ]] || [[ "$THREADS" -lt 1 ]]; then
+                    log_error "Invalid thread count: $THREADS"
+                    exit 1
+                fi
+                log_info "Thread count set to: $THREADS"
+                shift 2
+                ;;
+            --config)
+                CUSTOM_CONFIG="$2"
+                if [[ ! -f "$CUSTOM_CONFIG" ]]; then
+                    log_error "Configuration file not found: $CUSTOM_CONFIG"
+                    exit 1
+                fi
+                log_info "Using custom configuration: $CUSTOM_CONFIG"
+                shift 2
+                ;;
+            --help)
+                show_usage
+                exit 0
+                ;;
+            restore)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "Restore command requires backup directory"
+                    show_usage
+                    exit 1
+                fi
+                restore_from_backup "$2"
+                exit 0
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
 # Main execution
 main() {
+    # Parse command line arguments
+    parse_arguments "$@"
+
     log_info "Starting Fortress Linux hardening..."
     log_info "Log file: $LOG_FILE"
     log_info "Backup directory: $BACKUP_DIR"
 
-    # Handle restore mode
-    if [[ "${1:-}" == "restore" ]]; then
-        restore_from_backup "${2:-}"
-        exit 0
+    if [[ "$MINIMAL_MODE" == true ]]; then
+        log_info "Running in MINIMAL MODE"
     fi
 
     # Pre-flight checks
     check_root_privileges
     check_system_requirements
-    check_connectivity
 
-    # Create backup
-    create_backup
+    # Skip connectivity check if in offline mode
+    if [[ "$OFFLINE_MODE" != true ]]; then
+        check_connectivity
+    fi
+
+    # Create backup (unless skipped)
+    if [[ "$SKIP_BACKUP" != true ]]; then
+        create_backup
+    else
+        log_warning "Backup creation skipped as requested"
+    fi
 
     # Execute hardening steps
     log_info "Starting system hardening procedures..."
 
-    update_system
+    # Update system (unless skipped)
+    if [[ "$SKIP_UPDATES" != true ]]; then
+        update_system
+    else
+        log_warning "System updates skipped as requested"
+    fi
+
     configure_firewall
-    disable_unnecessary_services
+
+    # In minimal mode, skip service disablement to avoid breaking critical functionality
+    if [[ "$MINIMAL_MODE" != true ]]; then
+        disable_unnecessary_services
+    fi
+
     configure_password_policy
-    configure_auditd
+
+    # Only configure auditd if not in minimal mode
+    if [[ "$MINIMAL_MODE" != true ]]; then
+        configure_auditd
+    fi
+
     configure_file_permissions
     configure_ssh_security
 
@@ -567,9 +717,15 @@ main() {
     cleanup
 
     log_success "Fortress Linux hardening completed successfully!"
-    log_info "Backup location: $BACKUP_DIR"
+
+    if [[ "$SKIP_BACKUP" != true ]]; then
+        log_info "Backup location: $BACKUP_DIR"
+        log_info "To restore: $0 restore $BACKUP_DIR"
+    else
+        log_warning "No backup was created (skipped by request)"
+    fi
+
     log_info "Log file: $LOG_FILE"
-    log_info "To restore: $0 restore $BACKUP_DIR"
 
     # Display summary
     echo

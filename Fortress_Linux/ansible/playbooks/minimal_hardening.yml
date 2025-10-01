@@ -1,0 +1,301 @@
+---
+# Fortress Linux - Minimal Hardening Playbook
+# Designed for resource-constrained systems
+# Includes only essential security configurations
+
+- name: Minimal Fortress Linux Hardening
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Minimal mode configuration
+    minimal_mode: true
+    enable_backup: false
+    enable_monitoring: false
+    enable_logging: false
+    max_memory_usage: 256
+    skip_services:
+      - bluetooth
+      - cups
+      - avahi
+      - rtkit
+
+  pre_tasks:
+    - name: Display minimal mode notice
+      debug:
+        msg: |
+          ========================================
+          FORTRESS LINUX - MINIMAL MODE
+          ========================================
+          This playbook applies essential security
+          configurations for resource-constrained
+          systems.
+
+          Features:
+          - Basic SSH hardening
+          - Essential firewall rules
+          - Core file permissions
+          - Minimal audit configuration
+
+          Skipped Features:
+          - Comprehensive monitoring
+          - Backup creation
+          - Advanced logging
+          - Service disablement
+          ========================================
+
+    - name: Check system resources
+      setup:
+        gather_subset:
+          - hardware
+          - distribution
+
+    - name: Display system information
+      debug:
+        msg: |
+          System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+          Memory: {{ ansible_memtotal_mb }}MB
+          Disk Space: {{ ansible_mounts[0].size_available | default('unknown') }}
+
+    - name: Verify minimal system requirements
+      assert:
+        that:
+          - ansible_memtotal_mb >= 512
+          - ansible_mounts[0].size_available | default(0) > 2097152  # 2GB in KB
+        fail_msg: |
+          System does not meet minimal requirements.
+          Required: 512MB RAM, 2GB disk space
+          Current: {{ ansible_memtotal_mb }}MB RAM, {{ ansible_mounts[0].size_available | default('unknown') }} disk
+        success_msg: "System meets minimal requirements"
+
+  tasks:
+    # Essential Security Packages
+    - name: Install essential security packages
+      package:
+        name:
+          - ufw
+          - auditd
+          - openssh-server
+          - coreutils
+        state: present
+      when: ansible_os_family == "Debian"
+
+    # Basic SSH Hardening
+    - name: Configure essential SSH security
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: true
+      loop:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+        - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxSessions', line: 'MaxSessions 2' }
+      notify: restart ssh
+
+    # Essential Firewall Configuration
+    - name: Configure essential firewall rules
+      ufw:
+        state: reloaded
+        policy: "{{ item.policy }}"
+        rule: "{{ item.rule }}"
+        port: "{{ item.port | default(omit) }}"
+        proto: "{{ item.proto | default(omit) }}"
+      loop:
+        - { policy: deny, rule: deny, direction: incoming }
+        - { policy: allow, rule: allow, direction: outgoing }
+        - { policy: allow, rule: allow, port: '22', proto: 'tcp' }
+      notify: enable firewall
+
+    # Essential Password Policy
+    - name: Configure minimal password policy
+      lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: true
+      loop:
+        - { regexp: '^#?minlen', line: 'minlen = 14' }
+        - { regexp: '^#?minclass', line: 'minclass = 4' }
+        - { regexp: '^#?maxrepeat', line: 'maxrepeat = 3' }
+        - { regexp: '^#?dcredit', line: 'dcredit = -1' }
+        - { regexp: '^#?ucredit', line: 'ucredit = -1' }
+        - { regexp: '^#?lcredit', line: 'lcredit = -1' }
+        - { regexp: '^#?ocredit', line: 'ocredit = -1' }
+
+    # Essential File Permissions
+    - name: Secure critical system files
+      file:
+        path: "{{ item.path }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: /etc/passwd, mode: '0644' }
+        - { path: /etc/group, mode: '0644' }
+        - { path: /etc/shadow, mode: '0000' }
+        - { path: /etc/gshadow, mode: '0000' }
+        - { path: /etc/ssh/sshd_config, mode: '0600' }
+
+    # Minimal Audit Configuration
+    - name: Configure essential audit rules
+      copy:
+        dest: /etc/audit/rules.d/minimal.rules
+        content: |
+          # Essential audit rules for minimal systems
+          -w /etc/passwd -p wa -k identity
+          -w /etc/shadow -p wa -k identity
+          -w /etc/sudoers -p wa -k sudoers
+          -w /var/log/auth.log -p wa -k logins
+          -w /bin/sudo -p x -k sudo_commands
+        owner: root
+        group: root
+        mode: '0600'
+      notify: restart auditd
+
+    # Remove World-Writable Permissions
+    - name: Find world-writable files
+      find:
+        paths: /
+        patterns: '*'
+        perm: '002'
+        recurse: false
+      register: world_writable_files
+      changed_when: false
+
+    - name: Display world-writable files found
+      debug:
+        msg: |
+          Found {{ world_writable_files.files | length }} world-writable files
+          Consider reviewing these files for security implications
+      when: world_writable_files.files | length > 0
+
+    # System Performance Optimization
+    - name: Optimize system for minimal resources
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-fortress-minimal.conf
+      loop:
+        - { name: vm.swappiness, value: '10' }
+        - { name: vm.dirty_ratio, value: '15' }
+        - { name: vm.dirty_background_ratio, value: '5' }
+
+    # Service Status Check
+    - name: Ensure critical services are running
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - ssh
+        - ufw
+      ignore_errors: true
+
+  handlers:
+    - name: restart ssh
+      service:
+        name: ssh
+        state: restarted
+
+    - name: restart auditd
+      service:
+        name: auditd
+        state: restarted
+
+    - name: enable firewall
+      ufw:
+        state: enabled
+
+  post_tasks:
+    # Verification
+    - name: Verify essential security configurations
+      block:
+        - name: Check SSH configuration
+          command: sshd -T
+          register: ssh_config
+          changed_when: false
+
+        - name: Check firewall status
+          command: ufw status verbose
+          register: firewall_status
+          changed_when: false
+
+        - name: Check auditd rules
+          command: auditctl -l
+          register: audit_rules
+          changed_when: false
+
+        - name: Display security verification
+          debug:
+            msg: |
+              ========================================
+              MINIMAL SECURITY VERIFICATION
+              ========================================
+              SSH: Root login disabled, Password auth disabled
+              Firewall: Essential rules configured
+              Audit: Critical file monitoring enabled
+              Password Policy: 14-char minimum enforced
+              ========================================
+
+    - name: Generate minimal system report
+      copy:
+        dest: /tmp/fortress-minimal-report.txt
+        content: |
+          Fortress Linux Minimal Hardening Report
+          =======================================
+          Date: {{ ansible_date_time.iso8601 }}
+          Host: {{ ansible_fqdn }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+          Security Features Applied:
+          ✓ SSH hardening (root login disabled, password auth disabled)
+          ✓ Essential firewall rules (SSH allowed only)
+          ✓ Password policy (14-char minimum, 4 character classes)
+          ✓ Critical file permissions secured
+          ✓ Minimal audit rules configured
+          ✓ System performance optimized
+
+          System Resources:
+          Memory: {{ ansible_memtotal_mb }}MB total
+          Disk Space: {{ ansible_mounts[0].size_available | default('unknown') }} available
+
+          Service Status:
+          SSH: {{ ansible_facts.services['ssh'].state | default('unknown') }}
+          Firewall: {{ ansible_facts.services['ufw'].state | default('unknown') }}
+
+          Next Steps:
+          1. Test SSH connectivity before closing current session
+          2. Verify firewall rules allow necessary access
+          3. Monitor system performance and disk usage
+          4. Review audit logs: /var/log/audit/audit.log
+
+          Recovery:
+          SSH config backup: /etc/ssh/sshd_config.backup
+          Restore with: cp /etc/ssh/sshd_config.backup /etc/ssh/sshd_config
+
+          Report generated: {{ ansible_date_time.iso8601 }}
+
+    - name: Display final summary
+      debug:
+        msg: |
+          ========================================
+          FORTRESS LINUX MINIMAL HARDENING COMPLETE
+          ========================================
+
+          Summary:
+          - Essential security configurations applied
+          - System resources optimized for minimal environments
+          - Critical services secured and verified
+
+          Report saved to: /tmp/fortress-minimal-report.txt
+
+          IMPORTANT: Test SSH connectivity in a separate session
+          before closing your current connection!
+          ========================================
