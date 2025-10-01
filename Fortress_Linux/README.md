@@ -481,6 +481,106 @@ sudo ./scripts/backup_restore.sh restore 20241201_143022
 sudo ./scripts/backup_restore.sh clean 30
 ```
 
+### Automated Backup Scheduler (`scripts/backup_scheduler.sh`)
+- **Flexible Scheduling**: Cron-based automated backups with customizable schedules
+- **Retention Management**: Automatic cleanup of old backups with configurable retention periods
+- **Email Notifications**: Optional email alerts for backup success/failure
+- **Configuration Management**: Interactive setup and status monitoring
+- **Resource Optimization**: Support for compression, size limits, and minimal system modes
+- **Error Handling**: Comprehensive logging and failure recovery mechanisms
+
+### Automated Backup Scheduling (`scripts/backup_scheduler.sh`)
+```bash
+# Install scheduler with daily backups
+sudo ./scripts/backup_scheduler.sh install
+
+# Install with custom schedule and retention
+sudo ./scripts/backup_scheduler.sh install \
+    --schedule "0 2 * * 0" \
+    --retention 60 \
+    --email admin@example.com
+
+# Interactive configuration
+sudo ./scripts/backup_scheduler.sh configure
+
+# Check scheduler status
+./scripts/backup_scheduler.sh status
+
+# Run backup immediately
+sudo ./scripts/backup_scheduler.sh run
+
+# Test configuration
+sudo ./scripts/backup_scheduler.sh test
+
+# Disable scheduler
+sudo ./scripts/backup_scheduler.sh disable
+
+# Uninstall scheduler
+sudo ./scripts/backup_scheduler.sh uninstall
+```
+
+#### Scheduling Options
+```bash
+# Daily at 2 AM
+--schedule "0 2 * * *"
+
+# Weekly on Sunday at 2 AM
+--schedule "0 2 * * 0"
+
+# Monthly on 1st at 2 AM
+--schedule "0 2 1 * *"
+
+# Every 6 hours
+--schedule "*/6 * * * *"
+
+# Every 4 hours
+--schedule "0 */4 * * *"
+```
+
+#### Backup Types and Settings
+```bash
+# Full backup (default)
+./scripts/backup_scheduler.sh install --compress
+
+# Configuration-only backup for minimal systems
+sudo ./scripts/backup_scheduler.sh install \
+    --config-only \
+    --max-size 100M \
+    --schedule "0 */6 * * *"
+
+# High-frequency backups with compression
+sudo ./scripts/backup_scheduler.sh install \
+    --schedule "0 */4 * * *" \
+    --compress \
+    --retention 14
+```
+
+#### Email Notifications
+```bash
+# Enable email notifications
+sudo ./scripts/backup_scheduler.sh install \
+    --email admin@example.com \
+    --schedule "0 2 * * *"
+
+# Configure email after installation
+sudo ./scripts/backup_scheduler.sh configure
+```
+
+#### Configuration Management
+```bash
+# View current configuration
+./scripts/backup_scheduler.sh status
+
+# Interactive configuration setup
+sudo ./scripts/backup_scheduler.sh configure
+
+# Test configuration without installing
+sudo ./scripts/backup_scheduler.sh test
+
+# Dry run to preview changes
+sudo ./scripts/backup_scheduler.sh install --dry-run
+```
+
 ### Compatibility Testing (`scripts/compatibility_test.sh`)
 ```bash
 # Run full compatibility test
@@ -495,6 +595,7 @@ sudo ./scripts/backup_restore.sh clean 30
 ### Enhanced Logging
 - **Main Log**: `/var/log/fortress-hardening.log`
 - **Backup Log**: `/var/log/fortress-backup-restore.log`
+- **Scheduler Log**: `/var/log/fortress-backup-scheduler.log`
 - **Compatibility Log**: `/tmp/fortress-compatibility-test.log`
 
 ### Backup Locations
@@ -688,6 +789,7 @@ sudo sshd -T
 ### Script Documentation
 - `scripts/linux_hardening.sh` - Main hardening script
 - `scripts/backup_restore.sh` - Backup and restore utility
+- `scripts/backup_scheduler.sh` - Automated backup scheduling system
 - `scripts/compatibility_test.sh` - System compatibility testing
 - `scripts/system_check.sh` - Quick system verification
 
@@ -730,13 +832,17 @@ sudo ./scripts/linux_hardening.sh restore <backup_directory>
 
 ## 🎯 Roadmap
 
-### Completed (2024 Update)
+### Completed (2024-2025 Updates)
 - ✅ Enhanced error handling and logging
 - ✅ Comprehensive backup and restore functionality
 - ✅ Updated dependencies to latest secure versions
 - ✅ Ubuntu 22.04+ and Debian 12+ compatibility
 - ✅ Pre-flight system validation
 - ✅ Post-hardening verification
+- ✅ Minimal systems installation support (512MB RAM, 2GB storage)
+- ✅ Automated backup scheduling with email notifications
+- ✅ Resource optimization for constrained environments
+- ✅ Advanced configuration management system
 
 ### Future Enhancements
 - [ ] Web-based management interface
