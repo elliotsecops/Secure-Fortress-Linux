@@ -1,0 +1,4 @@
+[bandit]
+exclude_dirs = tests,molecule,.git,.venv,venv,env
+skips = B101,B601
+tests = ansible,scripts

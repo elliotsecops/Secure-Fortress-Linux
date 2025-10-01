@@ -1,0 +1,113 @@
+---
+- name: Cleanup
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Remove test users
+      user:
+        name: "{{ item }}"
+        state: absent
+        remove: yes
+        force: yes
+      loop:
+        - testuser
+        - securityuser
+      ignore_errors: yes
+
+    - name: Remove test groups
+      group:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - testgroup
+        - securitygroup
+      ignore_errors: yes
+
+    - name: Remove test directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/fortress-test
+        - /var/log/fortress-test
+        /etc/fortress-test
+        /var/log/test
+        /etc/ssh/test_config
+        /etc/iptables/test_rules.v4
+      ignore_errors: yes
+
+    - name: Remove test configuration files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/fortress-test/environment
+        - /etc/security/pwquality.conf.d/test.conf
+        - /etc/audit/rules.d/test.rules
+        - /etc/cron.d/test_cron
+        /etc/systemd/system/test-service.service
+        /etc/test-config.conf
+        /etc/test-secure-file
+        /etc/sudoers.d/testuser
+      ignore_errors: yes
+
+    - name: Remove test log files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/log/test/test.log
+        - /tmp/cron_test.log
+      ignore_errors: yes
+
+    - name: Stop and disable test service
+      systemd:
+        name: test-service
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Remove test SSH host keys
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/ssh/ssh_host_rsa_key
+        - /etc/ssh/ssh_host_rsa_key.pub
+        - /etc/ssh/ssh_host_ecdsa_key
+        - /etc/ssh/ssh_host_ecdsa_key.pub
+        - /etc/ssh/ssh_host_ed25519_key
+        - /etc/ssh/ssh_host_ed25519_key.pub
+      ignore_errors: yes
+
+    - name: Remove test user SSH keys
+      file:
+        path: "/home/testuser/.ssh/{{ item }}"
+        state: absent
+      loop:
+        - id_rsa
+        - id_rsa.pub
+        - authorized_keys
+      ignore_errors: yes
+
+    - name: Remove test user home directory
+      file:
+        path: /home/testuser
+        state: absent
+      ignore_errors: yes
+
+    - name: Clean up package cache
+      apt:
+        autoclean: yes
+        autoremove: yes
+      ignore_errors: yes
+
+    - name: Reset systemd
+      systemd:
+        daemon_reload: yes
+      ignore_errors: yes
+
+    - name: Display cleanup completion
+      debug:
+        msg: "Test environment cleanup completed successfully"

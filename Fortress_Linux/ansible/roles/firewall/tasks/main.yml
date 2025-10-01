@@ -1,0 +1,115 @@
+---
+# Main tasks for firewall configuration
+
+- name: Include default variables
+  include_vars: ../defaults/main.yml
+
+- name: Include OS-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | split('.')[0] }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+    - "default.yml"
+
+- name: Ensure UFW is installed
+  package:
+    name: ufw
+    state: present
+  when: firewall_enabled
+
+- name: Configure UFW default policies
+  ufw:
+    state: disabled
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: "{{ firewall_default_incoming_policy }}" }
+    - { direction: outgoing, policy: "{{ firewall_default_outgoing_policy }}" }
+  when: firewall_enabled
+
+- name: Configure UFW logging
+  ufw:
+    logging: "{{ firewall_log_level }}"
+  when: firewall_enabled
+
+- name: Allow essential services
+  ufw:
+    rule: allow
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default(item.name) }}"
+  loop:
+    - { name: "OpenSSH", comment: "SSH access" }
+  when: firewall_enabled
+
+- name: Allow custom ports
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    comment: "{{ item.comment | default('Port ' + item.port) }}"
+  loop: "{{ firewall_allowed_ports }}"
+  when: firewall_enabled and item.port is defined
+
+- name: Add rate limiting for SSH
+  ufw:
+    rule: limit
+    port: ssh
+    proto: tcp
+    log: yes
+  when: firewall_enabled and firewall_rate_limiting and firewall_rate_limit_ssh
+
+- name: Add additional firewall rules
+  ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    from_ip: "{{ item.from_ip | default('any') }}"
+    comment: "{{ item.comment | default('Custom rule') }}"
+  loop: "{{ firewall_additional_rules }}"
+  when: firewall_enabled
+
+- name: Enable application profiles
+  ufw:
+    rule: allow
+    name: "{{ item }}"
+  loop: "{{ firewall_app_profiles }}"
+  when: firewall_enabled
+
+- name: Configure custom firewall rules from file
+  include_tasks: custom_rules.yml
+  when: firewall_enabled and firewall_custom_rules_file | length > 0
+
+- name: Enable IPv6 support
+  lineinfile:
+    path: /etc/default/ufw
+    regexp: '^IPV6='
+    line: 'IPV6=yes'
+  when: firewall_enabled and firewall_ipv6_enabled
+
+- name: Disable IPv6 support
+  lineinfile:
+    path: /etc/default/ufw
+    regexp: '^IPV6='
+    line: 'IPV6=no'
+  when: firewall_enabled and not firewall_ipv6_enabled
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  when: firewall_enabled
+  notify: restart ufw
+
+- name: Disable UFW
+  ufw:
+    state: disabled
+  when: not firewall_enabled
+  notify: stop ufw
+
+- name: Display firewall status
+  debug:
+    msg: |
+      Firewall configuration completed.
+      Status: {{ 'Enabled' if firewall_enabled else 'Disabled' }}
+      Default incoming: {{ firewall_default_incoming_policy }}
+      Default outgoing: {{ firewall_default_outgoing_policy }}
+      Allowed ports: {{ firewall_allowed_ports | map(attribute='port') | list }}

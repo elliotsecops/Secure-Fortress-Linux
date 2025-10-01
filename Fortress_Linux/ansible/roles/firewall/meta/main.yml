@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  author: Fortress Linux Team
+  description: Firewall configuration role for Linux systems
+  company: Fortress Linux
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+        - 22.04
+    - name: Debian
+      versions:
+        - 10
+        - 11
+  galaxy_tags:
+    - firewall
+    - security
+    - ufw
+    - hardening
+    - networking
+    - system
+
+dependencies: []

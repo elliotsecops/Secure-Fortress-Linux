@@ -1,0 +1,68 @@
+# Safety policy configuration for Fortress Linux
+
+# Ignore specific vulnerabilities by ID
+ignore:
+  # Example: Ignore a specific vulnerability
+  # - "CVE-2023-1234"
+  # - "GHSA-1234-abcd-5678"
+
+# Security severity thresholds
+security:
+  # Fail if any critical vulnerabilities are found
+  fail_on: critical
+  # Warn for high severity vulnerabilities
+  warn_on: high, medium
+
+# Package-specific rules
+package-rules:
+  # Example: Allow specific versions of packages
+  # - name: "requests"
+  #   spec: ">=2.25.0"
+  #   reason: "Security fixes in newer versions"
+
+  # Allow specific package versions with known issues
+  - name: "ansible"
+    spec: ">=2.9.0"
+    reason: "Base requirement for project"
+
+  # Python standard library exemptions
+  - name: "setuptools"
+    spec: ">=50.0.0"
+    reason: "Build dependency"
+
+# License compliance
+licenses:
+  allowed:
+    - "MIT"
+    - "Apache-2.0"
+    - "BSD-3-Clause"
+    - "GPL-3.0-only"
+    - "LGPL-3.0-only"
+    - "MPL-2.0"
+  warn: true
+  fail: false
+
+# Output configuration
+output:
+  format: json
+  file: safety-report.json
+  bare: false
+  debug: false
+
+# Reporting configuration
+report:
+  # Generate detailed reports
+  detailed: true
+  # Include dependency tree
+  include-dependencies: true
+  # Include license information
+  include-licenses: true
+
+# Scanning configuration
+scan:
+  # Scan development dependencies
+  dev-dependencies: true
+  # Scan test dependencies
+  test-dependencies: true
+  # Scan all files in the project
+  all-files: true

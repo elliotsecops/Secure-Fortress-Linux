@@ -1,0 +1,19 @@
+---
+# Custom firewall rules from file
+
+- name: Check if custom rules file exists
+  stat:
+    path: "{{ firewall_custom_rules_file }}"
+  register: custom_rules_file
+
+- name: Apply custom firewall rules
+  blockinfile:
+    path: /etc/ufw/before.rules
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - CUSTOM RULES"
+    block: |
+      # Custom firewall rules from {{ firewall_custom_rules_file }}
+      {% for rule in custom_rules_content %}
+      {{ rule }}
+      {% endfor %}
+  when: custom_rules_file.stat.exists
+  notify: reload ufw

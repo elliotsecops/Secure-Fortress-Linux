@@ -1,0 +1,100 @@
+---
+dependency:
+  name: galaxy
+  enabled: true
+  options:
+    role-file: requirements.yml
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+  provider:
+    name: docker
+
+platforms:
+  - name: ubuntu-20.04
+    image: ubuntu:20.04
+    command: /sbin/init
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /tmp
+      - /run
+    capabilities:
+      - SYS_ADMIN
+    pre_build_image: true
+
+  - name: ubuntu-22.04
+    image: ubuntu:22.04
+    command: /sbin/init
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /tmp
+      - /run
+    capabilities:
+      - SYS_ADMIN
+    pre_build_image: true
+
+  - name: debian-11
+    image: debian:11
+    command: /sbin/init
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /tmp
+      - /run
+    capabilities:
+      - SYS_ADMIN
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      ubuntu-20.04:
+        ansible_python_interpreter: /usr/bin/python3
+      ubuntu-22.04:
+        ansible_python_interpreter: /usr/bin/python3
+      debian-11:
+        ansible_python_interpreter: /usr/bin/python3
+
+  playbooks:
+    converge: ../ansible/playbooks/playbook_hardening.yml
+    prepare: prepare.yml
+    cleanup: cleanup.yml
+
+  env:
+    ANSIBLE_LIBRARY: ${ANSIBLE_LIBRARY:-/usr/share/ansible}
+    ANSIBLE_ROLES_PATH: ${ANSIBLE_ROLES_PATH:-../ansible/roles}
+
+scenario:
+  name: default
+  test_sequence:
+    - destroy
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: testinfra
+  directory: ../tests/
+  options:
+    v: true
+    s: true
+    jj: true
+  additional_files_or_dirs:
+    - ../tests/test_molecule.py
+    - ../tests/test_basic_security.py
+  lint:
+    name: flake8

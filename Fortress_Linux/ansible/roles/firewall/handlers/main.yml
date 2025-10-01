@@ -1,0 +1,29 @@
+---
+# Handlers for firewall role
+
+- name: restart ufw
+  systemd:
+    name: ufw
+    state: restarted
+    enabled: yes
+
+- name: stop ufw
+  systemd:
+    name: ufw
+    state: stopped
+    enabled: no
+
+- name: reload ufw
+  systemd:
+    name: ufw
+    state: reloaded
+
+- name: enable ufw
+  systemd:
+    name: ufw
+    enabled: yes
+
+- name: disable ufw
+  systemd:
+    name: ufw
+    enabled: no

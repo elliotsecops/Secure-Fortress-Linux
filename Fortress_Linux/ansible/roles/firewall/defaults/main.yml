@@ -1,0 +1,41 @@
+---
+# Default variables for firewall role
+
+# Firewall configuration
+firewall_enabled: true
+firewall_default_incoming_policy: "deny"
+firewall_default_outgoing_policy: "allow"
+
+# UFW configuration
+ufw_enabled: "{{ firewall_enabled }}"
+ufw_logging: "low"
+ufw_default_incoming: "{{ firewall_default_incoming_policy }}"
+ufw_default_outgoing: "{{ firewall_default_outgoing_policy }}"
+
+# Allowed services and ports
+firewall_allowed_ports:
+  - { port: "22", proto: "tcp", comment: "SSH" }
+  - { port: "80", proto: "tcp", comment: "HTTP" }
+  - { port: "443", proto: "tcp", comment: "HTTPS" }
+
+# Additional firewall rules
+firewall_additional_rules: []
+
+# Rate limiting
+firewall_rate_limiting: true
+firewall_rate_limit_ssh: true
+firewall_ssh_limit: "6/min"
+firewall_ssh_burst: "6"
+
+# IPv6 support
+firewall_ipv6_enabled: true
+
+# Logging configuration
+firewall_log_level: "medium"
+firewall_log_prefix: "UFW: "
+
+# Application profiles
+firewall_app_profiles: []
+
+# Custom firewall rules file
+firewall_custom_rules_file: ""

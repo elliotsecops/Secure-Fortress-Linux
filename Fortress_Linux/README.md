@@ -1,20 +1,37 @@
 # Fortress Linux - System Security Hardening Framework
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ansible](https://img.shields.io/badge/Ansible-2.9%2B-blue.svg)](https://www.ansible.com/)
-[![Linux](https://img.shields.io/badge/Linux-Ubuntu%7CDebian-orange.svg)](https://www.linux.org/)
+[![Ansible](https://img.shields.io/badge/Ansible-9.0%2B-blue.svg)](https://www.ansible.com/)
+[![Linux](https://img.shields.io/badge/Linux-Ubuntu%2022.04%2B%7CDebian%2012%2B-orange.svg)](https://www.linux.org/)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 
-Fortress Linux is a comprehensive security hardening framework designed to enhance the security posture of Linux systems through automated hardening scripts and Ansible playbooks. This project provides both manual and automated approaches to system hardening, with integrated monitoring capabilities.
+Fortress Linux is a comprehensive security hardening framework designed to enhance the security posture of Linux systems through automated hardening scripts and Ansible playbooks. This project provides both manual and automated approaches to system hardening, with integrated monitoring capabilities and robust error handling.
+
+## 🆕 What's New (2024 Update)
+
+### 🚀 Critical Improvements
+- **Enhanced Error Handling**: Comprehensive logging and error recovery in bash scripts
+- **Backup & Restore**: Full system backup and restore functionality
+- **Modern Dependencies**: Updated to latest secure versions (Ansible 9.0+, Python 3.8+)
+- **Ubuntu 24.04 & Debian 12 Support**: Full compatibility with latest LTS releases
+- **Improved Security**: Enhanced password policies (14-char minimum), SSH hardening, and audit rules
+
+### 🔧 Technical Enhancements
+- **Idempotent Scripts**: Safe to run multiple times
+- **Pre-flight Checks**: System compatibility verification before execution
+- **Rollback Capability**: One-click restore from backup
+- **Comprehensive Logging**: Detailed audit trail of all changes
+- **Validation Steps**: Post-hardening verification of security settings
 
 ## 🎯 Features
 
 ### Security Hardening
 - **System Updates**: Automated system package updates and security patches
-- **Firewall Configuration**: UFW (Uncomplicated Firewall) setup with SSH access
+- **Firewall Configuration**: UFW (Uncomplicated Firewall) setup with rate limiting
 - **Service Hardening**: Disables unnecessary and potentially vulnerable services
-- **Password Policy**: Enforces strong password requirements (minimum 12 characters, 4 character classes)
-- **SSH Security**: Disables root login and password-based authentication
-- **File Permissions**: Secures sensitive system files and directories
+- **Password Policy**: Enforces strong password requirements (minimum 14 characters, 4 character classes)
+- **SSH Security**: Disables root login, password authentication, adds security banners
+- **File Permissions**: Secures sensitive system files and removes world-writable permissions
 
 ### Monitoring & Detection
 - **File Integrity Monitoring**: Real-time monitoring of critical system files
@@ -23,315 +40,354 @@ Fortress Linux is a comprehensive security hardening framework designed to enhan
 - **Log Collection**: Centralized log monitoring and analysis
 - **Intrusion Detection**: Integration with Wazuh SIEM platform
 
+### Backup & Recovery
+- **Full System Backup**: Comprehensive backup of configurations, users, packages
+- **Incremental Backups**: Support for compressed and configuration-only backups
+- **One-Click Restore**: Simple restore functionality with verification
+- **Backup Verification**: Integrity checks for all backup archives
+- **Automated Cleanup**: Configurable retention policies for old backups
+
 ### Automation
 - **Ansible Playbooks**: Automated deployment and configuration management
-- **Bash Scripts**: Manual hardening capabilities for individual systems
+- **Enhanced Bash Scripts**: Manual hardening with error handling and logging
 - **Template-based Configuration**: Jinja2 templates for flexible configuration
-- **Logging and Auditing**: Comprehensive deployment and system logs
+- **Compatibility Testing**: Pre-deployment system verification
+- **Rollback Automation**: Automatic backup creation before changes
 
 ## 📋 Prerequisites
 
 ### System Requirements
-- **Operating System**: Ubuntu 18.04+ or Debian 9+
+- **Operating System**: Ubuntu 22.04+ or Debian 12+ (tested on Ubuntu 24.04 LTS)
 - **Architecture**: x86_64 or ARM64
-- **Memory**: Minimum 2GB RAM
+- **Memory**: Minimum 2GB RAM (4GB+ recommended)
 - **Storage**: Minimum 10GB free disk space
 - **Network**: Internet connection for package installation
 
 ### Software Dependencies
 - **Bash**: Version 4.0+
-- **Ansible**: Version 2.9+ (for automated deployment)
-- **Python**: Version 3.6+ (Ansible dependency)
+- **Ansible**: Version 9.0+ (for automated deployment)
+- **Python**: Version 3.8+ (Ansible dependency)
+- **Systemd**: Required for service management
 - **Wazuh Agent**: Version 4.0+ (optional, for SIEM integration)
 
 ### User Requirements
 - **Root Access**: Administrative privileges required for system modifications
 - **SSH Access**: Working SSH connection for remote deployment
-- **Backup**: System backup recommended before hardening
+- **Backup**: System backup recommended before hardening (automatically created)
 
-## 🚀 Installation
+## 🚀 Quick Start
 
-### Method 1: Manual Installation (Bash Script)
+### Option 1: Compatibility Check (Recommended First)
+```bash
+# Verify system compatibility
+./scripts/system_check.sh
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/your-username/fortress-linux.git
-   cd fortress-linux
-   ```
+# Or run comprehensive compatibility tests
+./scripts/compatibility_test.sh
+```
 
-2. **Make Script Executable**
-   ```bash
-   chmod +x scripts/linux_hardening.sh
-   ```
+### Option 2: Safe Installation with Backup
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/fortress-linux.git
+cd fortress-linux
 
-3. **Run Hardening Script**
-   ```bash
-   sudo ./scripts/linux_hardening.sh
-   ```
+# 2. Create a backup first
+sudo ./scripts/backup_restore.sh backup --compress
 
-### Method 2: Automated Installation (Ansible)
+# 3. Run system compatibility check
+./scripts/system_check.sh
 
-1. **Install Ansible**
-   ```bash
-   sudo apt update
-   sudo apt install ansible -y
-   ```
+# 4. Execute hardening
+sudo ./scripts/linux_hardening.sh
+```
 
-2. **Configure Target Systems**
-   ```bash
-   # Edit config/hosts file with your server IP(s)
-   nano config/hosts
-   ```
+### Option 3: Traditional Manual Installation
+```bash
+# 1. Clone and prepare
+git clone https://github.com/your-username/fortress-linux.git
+cd fortress-linux
+chmod +x scripts/linux_hardening.sh
 
-3. **Configure Ansible Settings**
-   ```bash
-   # Update config/ansible.cfg with your SSH user
-   nano config/ansible.cfg
-   ```
+# 2. Run hardening script
+sudo ./scripts/linux_hardening.sh
 
-4. **Run Ansible Playbook**
-   ```bash
-   ansible-playbook -i config/hosts playbooks/playbook_hardening.yml
-   ```
+# 3. Monitor progress
+tail -f /var/log/fortress-hardening.log
+```
+
+### Option 4: Automated Installation (Ansible)
+```bash
+# 1. Install dependencies
+sudo apt update
+sudo apt install python3-pip python3-venv -y
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+ansible-galaxy collection install -r requirements.yml
+
+# 2. Configure inventory
+cp ansible/inventory/hosts.example ansible/inventory/hosts
+nano ansible/inventory/hosts  # Add your target systems
+
+# 3. Run Ansible playbook
+ansible-playbook -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
+```
+
+## 📊 Enhanced Scripts
+
+### System Hardening Script (`scripts/linux_hardening.sh`)
+- **Error Handling**: Comprehensive error catching and logging
+- **Pre-flight Checks**: System requirements validation
+- **Automatic Backup**: Creates backup before making changes
+- **Verification**: Post-hardening validation of security settings
+- **Rollback Support**: One-command restore capability
+
+### Backup & Restore Utility (`scripts/backup_restore.sh`)
+```bash
+# Create full backup
+sudo ./scripts/backup_restore.sh backup --compress
+
+# Create configuration-only backup
+sudo ./scripts/backup_restore.sh backup --config-only
+
+# List available backups
+./scripts/backup_restore.sh list
+
+# Restore from backup
+sudo ./scripts/backup_restore.sh restore 20241201_143022
+
+# Verify backup integrity
+./scripts/backup_restore.sh verify 20241201_143022
+
+# Clean old backups (older than 30 days)
+sudo ./scripts/backup_restore.sh clean 30
+```
+
+### Compatibility Testing (`scripts/compatibility_test.sh`)
+```bash
+# Run full compatibility test
+./scripts/compatibility_test.sh
+
+# Quick system check
+./scripts/system_check.sh
+```
 
 ## ⚙️ Configuration
 
-### Ansible Configuration (`config/ansible.cfg`)
+### Enhanced Logging
+- **Main Log**: `/var/log/fortress-hardening.log`
+- **Backup Log**: `/var/log/fortress-backup-restore.log`
+- **Compatibility Log**: `/tmp/fortress-compatibility-test.log`
 
-```ini
-[defaults]
-inventory = ./config/hosts
-remote_user = your_ansible_user
-host_key_checking = False
-retry_files_enabled = False
-log_path = ./logs/deployment.log
-timeout = 30
-forks = 10
-gathering = smart
-gather_facts = True
+### Backup Locations
+- **Backup Directory**: `/etc/fortress-backups/`
+- **Format**: `YYYYMMDD_HHMMSS` (timestamped directories)
+- **Compression**: Optional `.tar.gz` archives
 
-[privilege_escalation]
-become = True
-become_method = sudo
-become_user = root
-become_ask_pass = False
+### Security Configuration Updates
 
-[ssh_connection]
-ssh_args = -o ForwardAgent=yes -o ControlMaster=auto -o ControlPersist=60s
-pipelining = True
-```
-
-### Host Inventory (`config/hosts`)
-
-```
-[webservers]
-192.168.1.10 ansible_user=admin
-192.168.1.11 ansible_user=admin
-
-[databases]
-192.168.1.20 ansible_user=admin
-```
-
-### Wazuh Agent Configuration (`templates/wazuh-agent-config.j2`)
-
-Key configuration options:
-- **Server Address**: Wazuh manager IP address
-- **Monitoring Directories**: `/etc`, `/var/log`, `/bin`
-- **Scan Frequency**: Hourly file integrity checks
-- **Rootkit Detection**: Enabled with 12-hour intervals
-- **Real-time Monitoring**: Enabled for critical binaries
-
-## 🔧 Usage
-
-### Manual Hardening
-The bash script performs the following actions automatically:
-
-1. **System Updates**
-   ```bash
-   apt update && apt upgrade -y
-   ```
-
-2. **Firewall Configuration**
-   ```bash
-   ufw default deny incoming
-   ufw default allow outgoing
-   ufw allow OpenSSH
-   ufw enable
-   ```
-
-3. **Service Hardening**
-   ```bash
-   systemctl disable avahi-daemon
-   systemctl disable cups
-   systemctl disable nfs-server
-   ```
-
-4. **Password Policy**
-   ```bash
-   echo "minlen = 12" >> /etc/security/pwquality.conf
-   echo "minclass = 4" >> /etc/security/pwquality.conf
-   ```
-
-5. **SSH Security**
-   ```bash
-   sed -i "s/^#PermitRootLogin.*/PermitRootLogin no/" /etc/ssh/sshd_config
-   sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication no/" /etc/ssh/sshd_config
-   ```
-
-### Ansible Playbook Usage
-The playbook provides automated deployment with the following tasks:
-
-1. **Package Installation**: Installs security packages (UFW, fail2ban, auditd, Wazuh)
-2. **Wazuh Configuration**: Deploys and configures Wazuh agent
-3. **Firewall Setup**: Configures UFW with SSH access
-4. **Service Management**: Enables and starts security services
-5. **Auto Updates**: Configures unattended security updates
-
-## 📊 Monitoring and Logging
-
-### Log Files
-- **Deployment Logs**: `logs/deployment.log`
-- **System Logs**: `/var/log/auth.log`, `/var/log/syslog`
-- **Audit Logs**: `/var/log/audit/audit.log`
-- **Wazuh Logs**: `/var/ossec/logs/ossec.log`
-
-### Monitoring Commands
+#### Password Policies (Enhanced)
 ```bash
-# Check firewall status
-sudo ufw status
+# Updated settings in /etc/security/pwquality.conf
+minlen = 14           # Increased from 12
+minclass = 4
+maxrepeat = 3
+dcredit = -1
+ucredit = -1
+lcredit = -1
+ocredit = -1
+difok = 3
+```
 
-# Verify auditd service
-sudo systemctl status auditd
+#### SSH Security (Enhanced)
+```bash
+# Additional security settings
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 2
+X11Forwarding no
+AllowTcpForwarding no
+Banner /etc/ssh/banner
+```
 
-# Check Wazuh agent
-sudo systemctl status wazuh-agent
-
-# View recent security events
-sudo tail -f /var/log/auth.log
+#### Firewall Rules (Enhanced)
+```bash
+# Rate limiting and logging
+ufw logging medium
+ufw limit ssh/tcp    # Rate limit SSH attempts
 ```
 
 ## 🛡️ Security Features
 
 ### Implemented Hardening Measures
-- **Network Security**: Firewall configuration, SSH hardening
-- **Access Control**: Password policies, user permission management
-- **File Security**: Permission hardening, integrity monitoring
-- **Service Security**: Unnecessary service disablement
-- **Monitoring**: Audit logging, intrusion detection
-- **Patch Management**: Automated security updates
+- **Network Security**: Enhanced firewall configuration with rate limiting
+- **Access Control**: Strengthened password policies and SSH security
+- **File Security**: Comprehensive permission hardening and integrity monitoring
+- **Service Security**: Unnecessary service disablement and monitoring
+- **Monitoring**: Enhanced audit logging and intrusion detection
+- **Patch Management**: Automated security updates with validation
 
-### Compliance Standards
-- **CIS Benchmarks**: Aligns with CIS Ubuntu Linux Benchmark
-- **NIST Standards**: Follows NIST cybersecurity framework
-- **SOC 2**: Implements controls for security monitoring
-- **GDPR**: Data protection and logging requirements
+### New Security Enhancements
+- **Password Complexity**: 14-character minimum with character class requirements
+- **SSH Hardening**: Connection timeouts, failed attempt limits, security banners
+- **Audit Rules**: Comprehensive system call and file access monitoring
+- **File Permissions**: Automatic removal of world-writable permissions
+- **Service Isolation**: Disabled non-essential services for reduced attack surface
+
+## 📈 Monitoring and Verification
+
+### Real-time Monitoring
+```bash
+# Monitor hardening progress
+tail -f /var/log/fortress-hardening.log
+
+# Check system status after hardening
+sudo ufw status verbose
+sudo systemctl status auditd
+sudo systemctl status sshd
+```
+
+### Verification Commands
+```bash
+# Verify firewall rules
+sudo ufw status verbose
+
+# Verify SSH configuration
+sudo sshd -T | grep -E "permitrootlogin|passwordauthentication"
+
+# Verify auditd rules
+sudo auditctl -l
+
+# Check password policy
+grep minlen /etc/security/pwquality.conf
+```
+
+### System Health Check
+```bash
+# Run post-hardening verification
+./scripts/system_check.sh
+
+# Verify all security settings
+sudo ./scripts/linux_hardening.sh verify  # If implemented
+```
 
 ## 🔍 Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
+
+#### Pre-flight Check Failures
+```bash
+# Check system compatibility
+./scripts/system_check.sh
+
+# Verify dependencies
+which python3 ansible systemctl ufw
+```
+
+#### Permission Denied Errors
+```bash
+# Ensure running as root
+sudo ./scripts/linux_hardening.sh
+
+# Check script permissions
+ls -la scripts/linux_hardening.sh
+```
 
 #### SSH Connection Issues
 ```bash
+# Test SSH configuration
+sudo sshd -t
+
 # Check SSH service status
 sudo systemctl status sshd
 
-# Verify SSH configuration
-sudo sshd -t
-
-# Check firewall rules
+# Verify firewall allows SSH
 sudo ufw status
 ```
 
-#### Ansible Connection Problems
+#### Backup Issues
 ```bash
-# Test SSH connectivity
-ansible -i config/hosts all -m ping
+# Check backup directory
+ls -la /etc/fortress-backups/
 
-# Check Ansible configuration
-ansible --version
+# Verify backup integrity
+./scripts/backup_restore.sh verify <backup_id>
 
-# Verify inventory file
-ansible-inventory -i config/hosts --list
+# Check available disk space
+df -h
 ```
 
-#### Wazuh Agent Issues
+### Recovery Procedures
 ```bash
-# Check Wazuh service
-sudo systemctl status wazuh-agent
+# Restore from backup (if something goes wrong)
+sudo ./scripts/backup_restore.sh restore <backup_id>
 
-# Test connectivity to Wazuh manager
-sudo /var/ossec/bin/agent_control -l
+# Check logs for errors
+tail -100 /var/log/fortress-hardening.log
 
-# Verify configuration
-sudo /var/ossec/bin/ossec-logtest -f /var/ossec/etc/ossec.conf
+# Manual configuration verification
+sudo ufw status
+sudo systemctl status auditd sshd
 ```
-
-### Error Resolution
-1. **Permission Denied**: Ensure running with sudo privileges
-2. **Package Installation**: Verify internet connectivity and package sources
-3. **Service Failures**: Check system logs with `journalctl -u service-name`
-4. **Configuration Errors**: Validate syntax and file paths
 
 ## 🧪 Testing
 
 ### Pre-deployment Testing
 ```bash
-# Test in development environment first
-# Create system backup
-sudo timeshift --create --comments "pre-hardening"
+# System compatibility test
+./scripts/compatibility_test.sh
 
-# Verify script syntax
+# Syntax check scripts
 bash -n scripts/linux_hardening.sh
+bash -n scripts/backup_restore.sh
 
-# Test Ansible playbook syntax
-ansible-playbook --syntax-check playbooks/playbook_hardening.yml
+# Verify Ansible playbooks
+ansible-playbook --syntax-check ansible/playbooks/playbook_hardening.yml
 ```
 
 ### Post-deployment Verification
 ```bash
-# Check system hardening status
-sudo systemctl list-unit-files --state=enabled
+# System health check
+./scripts/system_check.sh
 
-# Verify firewall rules
+# Security verification
 sudo ufw status verbose
-
-# Test password policy
-chage -l username
-
-# Check SSH configuration
-sudo sshd -T | grep -E "permitrootlogin|passwordauthentication"
+sudo systemctl status auditd sshd
+sudo sshd -T
 ```
 
 ## 📚 Documentation
 
-### Additional Resources
-- [CIS Security Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
-- [Ansible Documentation](https://docs.ansible.com/)
-- [Wazuh Documentation](https://documentation.wazuh.com/)
-- [Ubuntu Security Guide](https://ubuntu.com/security)
+### Updated Documentation Structure
+- `README.md` - This file - Main documentation
+- `docs/DEPLOYMENT.md` - Detailed deployment guide
+- `docs/SECURITY.md` - Security configuration reference
+- `CHANGELOG.md` - Version history and changes
 
-### Configuration Files
+### Script Documentation
 - `scripts/linux_hardening.sh` - Main hardening script
-- `playbooks/playbook_hardening.yml` - Ansible playbook
-- `config/ansible.cfg` - Ansible configuration
-- `config/hosts` - Host inventory
-- `templates/wazuh-agent-config.j2` - Wazuh agent template
+- `scripts/backup_restore.sh` - Backup and restore utility
+- `scripts/compatibility_test.sh` - System compatibility testing
+- `scripts/system_check.sh` - Quick system verification
 
 ## 🤝 Contributing
 
 ### Development Workflow
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/new-feature`
-3. Test changes in development environment
+3. Test changes with `./scripts/compatibility_test.sh`
 4. Submit pull request with detailed description
 5. Code review and testing
 
-### Guidelines
-- Follow security best practices
-- Test all changes thoroughly
-- Update documentation for new features
-- Use appropriate coding standards
-- Consider backward compatibility
+### Testing Requirements
+- **Compatibility Testing**: Must pass on Ubuntu 22.04+ and Debian 12+
+- **Error Handling**: Scripts must handle errors gracefully
+- **Logging**: Comprehensive logging for all operations
+- **Backup**: All operations must be reversible
 
 ## 📄 License
 
@@ -342,34 +398,47 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Getting Help
 - **Documentation**: Read this README and inline code comments
 - **Issues**: Create GitHub issue with detailed description
-- **Community**: Join our security community discussions
-- **Email**: Contact support team for enterprise assistance
+- **Compatibility**: Run `./scripts/system_check.sh` first
+- **Logs**: Check `/var/log/fortress-hardening.log` for errors
 
-### Reporting Security Issues
-For security vulnerabilities, please email security@example.com with details:
-- Vulnerability description
-- Affected versions
-- Reproduction steps
-- Potential impact
+### Emergency Recovery
+If hardening causes issues:
+```bash
+# Immediately restore from backup
+sudo ./scripts/backup_restore.sh restore <latest_backup>
+
+# Or use restore function in hardening script
+sudo ./scripts/linux_hardening.sh restore <backup_directory>
+```
 
 ## 🎯 Roadmap
 
-### Upcoming Features
-- [ ] Multi-distribution support (CentOS, RHEL)
-- [ ] Cloud platform integration
+### Completed (2024 Update)
+- ✅ Enhanced error handling and logging
+- ✅ Comprehensive backup and restore functionality
+- ✅ Updated dependencies to latest secure versions
+- ✅ Ubuntu 22.04+ and Debian 12+ compatibility
+- ✅ Pre-flight system validation
+- ✅ Post-hardening verification
+
+### Future Enhancements
+- [ ] Web-based management interface
+- [ ] Multi-system orchestration
 - [ ] Compliance reporting dashboard
-- [ ] Automated backup and recovery
-- [ ] Security scanning and assessment tools
+- [ ] Automated backup scheduling
 - [ ] Container security hardening
+- [ ] Cloud platform integration
 
 ### Version History
+- **v2.0.0** - Major update with enhanced security and reliability
+- **v1.2.0** - Added Wazuh integration and monitoring
+- **v1.1.0** - Enhanced Ansible automation
 - **v1.0.0** - Initial release with basic hardening
-- **v1.1.0** - Added Wazuh integration
-- **v1.2.0** - Enhanced Ansible automation
-- **v2.0.0** - Comprehensive monitoring framework
 
 ---
 
-**⚠️ Important**: Always test hardening procedures in a development environment before production deployment. Create system backups and ensure you have alternative access methods before applying security changes.
+**⚠️ Important**: Always test hardening procedures in a development environment before production deployment. The enhanced scripts automatically create backups, but save your backup directory location for emergency recovery.
 
-**Made with ❤️ for Linux Security**
+**🔒 Security First**: This tool follows defensive security best practices and includes comprehensive error handling, logging, and rollback capabilities to ensure safe system hardening.
+
+**Made with ❤️ for Linux Security** - Enhanced 2024 Edition

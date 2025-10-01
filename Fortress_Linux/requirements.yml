@@ -1,79 +1,145 @@
 ---
-# Ansible collection requirements for Fortress Linux
+# Ansible collection requirements for Fortress Linux - Updated 2024
 collections:
-  # Core Ansible collections
+  # Core Ansible collections (latest stable)
   - name: ansible.builtin
-    version: ">=2.9.0"
+    version: ">=2.16.0"
   - name: ansible.posix
-    version: ">=1.4.0"
+    version: ">=1.5.0"
   - name: community.general
-    version: ">=6.0.0"
+    version: ">=8.0.0"
 
-  # Security-focused collections
+  # Security-focused collections (latest security patches)
   - name: community.security
-    version: ">=1.0.0"
+    version: ">=2.0.0"
   - name: ansible-security
     version: ">=1.0.0"
 
-  # System administration
+  # System administration (latest)
   - name: community.crypto
-    version: ">=2.0.0"
+    version: ">=2.15.0"
   - name: community.docker
-    version: ">=3.0.0"
+    version: ">=3.10.0"
 
-  # Monitoring and logging
+  # Monitoring and logging (enhanced)
   - name: community.grafana
-    version: ">=1.0.0"
+    version: ">=1.5.0"
   - name: community.elasticsearch
+    version: ">=3.0.0"
+  - name: community.monitoring
     version: ">=2.0.0"
 
-  # Cloud platform support (optional)
+  # Cloud platform support (latest)
   - name: amazon.aws
-    version: ">=5.0.0"
+    version: ">=7.0.0"
   - name: google.cloud
-    version: ">=1.0.0"
+    version: ">=1.3.0"
   - name: azure.azcollection
-    version: ">=1.0.0"
+    version: ">=2.0.0"
 
-  # Configuration management
+  # Configuration management (latest)
   - name: ansible.utils
-    version: ">=2.8.0"
+    version: ">=2.12.0"
+  - name: community.sops
+    version: ">=1.6.0"
 
-  # Network security
+  # Network security (latest)
   - name: cisco.ios
-    version: ">=4.0.0"
+    version: ">=5.0.0"
   - name: cisco.asa
     version: ">=4.0.0"
+  - name: community.network
+    version: ">=5.0.0"
 
-  # Windows support (optional)
+  # Windows support (optional, latest)
   - name: chocolatey.chocolatey
-    version: ">=1.0.0"
+    version: ">=1.4.0"
   - name: ansible.windows
-    version: ">=1.12.0"
+    version: ">=2.0.0"
+
+  # Database management (for logging)
+  - name: community.postgresql
+    version: ">=3.0.0"
+  - name: community.mysql
+    version: ">=3.0.0"
+
+  # Container orchestration
+  - name: community.kubernetes
+    version: ">=3.0.0"
+  - name: kubernetes.core
+    version: ">=3.0.0"
+
+  # Identity and access management
+  - name: community.keycloak
+    version: ">=3.0.0"
+
+  # Backup and disaster recovery
+  - name: community.proxysql
+    version: ">=1.5.0"
+
+  # Automation and workflow
+  - name: community.awx
+    version: ">=23.0.0"
 
 roles:
-  # Security hardening roles (optional, can be installed separately)
+  # Security hardening roles (updated versions)
   - name: dev-sec.os-hardening
     src: https://github.com/dev-sec/ansible-os-hardening
-    version: "master"
+    version: "v9.0.0"
   - name: dev-sec.ssh-hardening
     src: https://github.com/dev-sec/ansible-ssh-hardening
-    version: "master"
+    version: "v9.0.0"
+  - name: dev-sec.nginx-hardening
+    src: https://github.com/dev-sec/ansible-nginx-hardening
+    version: "v2.0.0"
   - name: geerlingguy.security
     src: https://github.com/geerlingguy/ansible-role-security
     version: "master"
 
-  # Monitoring roles
+  # Monitoring roles (latest)
   - name: wazuh.wazuh-agent
     src: https://github.com/wazuh/wazuh-ansible
     version: "4.x"
+  - name: cloudalchemy.prometheus
+    src: https://github.com/cloudalchemy/ansible-prometheus
+    version: "master"
+  - name: cloudalchemy.grafana
+    src: https://github.com/cloudalchemy/ansible-grafana
+    version: "master"
 
-  # Firewall management
+  # Firewall management (latest)
   - name: geerlingguy.firewall
     src: https://github.com/geerlingguy/ansible-role-firewall
     version: "master"
+  - name: robertdebock.iptables
+    src: https://github.com/robertdebock/ansible-role-iptables
+    version: "master"
 
-  # Backup and recovery
+  # Backup and recovery (latest)
   - name: geerlingguy.backup
     src: https://github.com/geerlingguy/ansible-role-backup
+    version: "master"
+  - name: artis3n.tailscale
+    src: https://github.com/artis3n/ansible-role-tailscale
+    version: "v4.0.0"
+
+  # System hardening
+  - name: singleplatform-eng.users
+    src: https://github.com/singleplatform-eng/ansible-users
+    version: "master"
+  - name: weareinteractive.sudo
+    src: https://github.com/weareinteractive/ansible-sudo
+    version: "master"
+
+  # Log management
+  - name: cloudalchemy.logstash
+    src: https://github.com/cloudalchemy/ansible-logstash
+    version: "master"
+  - name: cloudalchemy.filebeat
+    src: https://github.com/cloudalchemy/ansible-filebeat
+    version: "master"
+
+  # Compliance checking
+  - name: complianceascode.content
+    src: https://github.com/ComplianceAsCode/content
     version: "master"

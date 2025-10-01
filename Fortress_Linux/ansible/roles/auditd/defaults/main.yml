@@ -1,0 +1,143 @@
+---
+# Default variables for auditd role
+
+# Auditd configuration
+auditd_enabled: true
+auditd_package: "auditd"
+auditd_service_name: "auditd"
+
+# Configuration files
+auditd_config_file: "/etc/audit/auditd.conf"
+auditd_rules_file: "/etc/audit/rules.d/audit.rules"
+auditd_rules_dir: "/etc/audit/rules.d"
+auditd_log_file: "/var/log/audit/audit.log"
+auditd_log_dir: "/var/log/audit"
+
+# Backup configuration
+auditd_config_backup: true
+auditd_backup_dir: "/etc/audit/backup"
+
+# Configuration template
+auditd_config_template: "auditd.conf.j2"
+
+# Log management
+auditd_max_log_file: 8
+auditd_max_log_file_action: "rotate"
+auditd_space_left: 75
+auditd_space_left_action: "syslog"
+auditd_admin_space_left: 20
+auditd_admin_space_left_action: "suspend"
+auditd_clear_logs: false
+
+# Audit rules configuration
+auditd_rules:
+  - name: "Record file access"
+    rule: "-a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=-1 -F key=access"
+    enabled: true
+  - name: "Record file creation"
+    rule: "-a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=-1 -F key=access"
+    enabled: true
+  - name: "Record execution"
+    rule: "-a always,exit -F arch=b64 -S execve,execveat -F auid>=1000 -F auid!=-1 -F key=execution"
+    enabled: true
+  - name: "Record system calls"
+    rule: "-a always,exit -F arch=b64 -S connect,bind,listen,accept -F auid>=1000 -F auid!=-1 -F key=network"
+    enabled: true
+  - name: "Record file deletions"
+    rule: "-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=-1 -F key=delete"
+    enabled: true
+  - name: "Record privilege changes"
+    rule: "-a always,exit -F arch=b64 -S setuid,setgid,setreuid,setregid,setresuid,setresgid -F auid>=1000 -F auid!=-1 -F key=perm_mod"
+    enabled: true
+  - name: "Record authentication events"
+    rule: "-w /var/log/auth.log -p wa -k auth"
+    enabled: true
+  - name: "Record sudo usage"
+    rule: "-w /var/log/sudo.log -p wa -k sudo"
+    enabled: true
+  - name: "Record system time changes"
+    rule: "-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -F auid>=1000 -F auid!=-1 -F key=time-change"
+    enabled: true
+  - name: "Record password changes"
+    rule: "-w /etc/passwd -p wa -k identity"
+    enabled: true
+  - name: "Record group changes"
+    rule: "-w /etc/group -p wa -k identity"
+    enabled: true
+  - name: "Record shadow file access"
+    rule: "-w /etc/shadow -p wa -k identity"
+    enabled: true
+  - name: "Record SELinux changes"
+    rule: "-w /etc/selinux/ -p wa -k MAC-policy"
+    enabled: true
+
+# Additional audit rules
+auditd_additional_rules: []
+
+# Security events to monitor
+auditd_security_events:
+  - name: "Record login failures"
+    rule: "-w /var/log/faillog -p wa -k logins"
+    enabled: true
+  - name: "Record last log changes"
+    rule: "-w /var/log/lastlog -p wa -k logins"
+    enabled: true
+  - name: "Record boot process"
+    rule: "-w /var/run/utmp -p wa -k session"
+    enabled: true
+  - name: "Record login sessions"
+    rule: "-w /var/log/wtmp -p wa -k logins"
+    enabled: true
+  - name: "Record system shutdown"
+    rule: "-w /var/log/btmp -p wa -k session"
+    enabled: true
+
+# System monitoring
+auditd_system_monitoring:
+  - name: "Record kernel modules"
+    rule: "-w /sbin/insmod -p x -k modules"
+    enabled: true
+  - name: "Record module removal"
+    rule: "-w /sbin/rmmod -p x -k modules"
+    enabled: true
+  - name: "Record module loading"
+    rule: "-w /sbin/modprobe -p x -k modules"
+    enabled: true
+  - name: "Record system calls"
+    rule: "-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -F auid>=1000 -F auid!=-1 -F key=modules"
+    enabled: true
+
+# Network monitoring
+auditd_network_monitoring:
+  - name: "Record network configuration"
+    rule: "-w /etc/issue -p wa -k system_info"
+    enabled: true
+  - name: "Record network interface changes"
+    rule: "-w /etc/sysconfig/network -p wa -k network"
+    enabled: true
+  - name: "Record DNS changes"
+    rule: "-w /etc/resolv.conf -p wa -k network"
+    enabled: true
+  - name: "Record hosts file changes"
+    rule: "-w /etc/hosts -p wa -k network"
+    enabled: true
+
+# Performance tuning
+auditd_buffer_size: 8192
+auditd_failure_mode: 1
+auditd_priority_boost: 4
+auditd_flush: incremental
+auditd_freq: 20
+
+# Security configuration
+auditd_audit_backlog_limit: 8192
+auditd_audit_rate_limit: 0
+auditd_audit_backlog_wait_time: 60000
+
+# Log rotation
+auditd_num_logs: 5
+auditd_log_format: RAW
+auditd_verify_email: no
+
+# Audit rule priority
+auditd_rule_priority: 20

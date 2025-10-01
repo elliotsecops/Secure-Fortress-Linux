@@ -1,0 +1,47 @@
+---
+# Handlers for auditd role
+
+- name: restart auditd
+  systemd:
+    name: "{{ auditd_service_name }}"
+    state: restarted
+    enabled: yes
+
+- name: reload auditd rules
+  command: auditctl -R {{ auditd_rules_file }}
+  register: auditd_reload
+  failed_when: auditd_reload.rc != 0
+
+- name: restart auditd service
+  systemd:
+    name: "{{ auditd_service_name }}"
+    state: restarted
+    enabled: yes
+
+- name: stop auditd
+  systemd:
+    name: "{{ auditd_service_name }}"
+    state: stopped
+    enabled: no
+
+- name: start auditd
+  systemd:
+    name: "{{ auditd_service_name }}"
+    state: started
+    enabled: yes
+
+- name: validate auditd configuration
+  command: auditctl -s
+  register: auditd_status
+  failed_when: auditd_status.rc != 0
+
+- name: rotate auditd logs
+  command: systemctl rotate auditd
+  register: auditd_rotate
+  failed_when: auditd_rotate.rc != 0
+
+- name: clear auditd logs
+  command: auditctl -C
+  register: auditd_clear
+  failed_when: auditd_clear.rc != 0
+  when: auditd_enabled and auditd_clear_logs | bool

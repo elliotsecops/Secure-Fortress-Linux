@@ -1,0 +1,600 @@
+---
+# Handlers for system hardening role
+
+- name: restart sysctl
+  systemd:
+    name: systemd-sysctl
+    state: restarted
+    enabled: yes
+
+- name: reload sysctl
+  command: sysctl -p
+  register: sysctl_reload
+  failed_when: sysctl_reload.rc != 0
+
+- name: restart networking
+  systemd:
+    name: networking
+    state: restarted
+    enabled: yes
+
+- name: restart network-manager
+  systemd:
+    name: NetworkManager
+    state: restarted
+    enabled: yes
+
+- name: restart ssh
+  systemd:
+    name: ssh
+    state: restarted
+    enabled: yes
+
+- name: restart auditd
+  systemd:
+    name: auditd
+    state: restarted
+    enabled: yes
+
+- name: restart cron
+  systemd:
+    name: cron
+    state: restarted
+    enabled: yes
+
+- name: restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+    enabled: yes
+
+- name: restart apparmor
+  systemd:
+    name: apparmor
+    state: restarted
+    enabled: yes
+
+- name: reload apparmor
+  command: apparmor_parser -r /etc/apparmor.d/*
+  register: apparmor_reload
+  failed_when: apparmor_reload.rc != 0
+
+- name: restart ufw
+  systemd:
+    name: ufw
+    state: restarted
+    enabled: yes
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+    enabled: yes
+
+- name: restart clamav
+  systemd:
+    name: clamav-freshclam
+    state: restarted
+    enabled: yes
+
+- name: restart logrotate
+  systemd:
+    name: logrotate
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-logind
+  systemd:
+    name: systemd-logind
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-timesyncd
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+    enabled: yes
+
+- name: restart unattended-upgrades
+  systemd:
+    name: unattended-upgrades
+    state: restarted
+    enabled: yes
+
+- name: restart apt-daily
+  systemd:
+    name: apt-daily
+    state: restarted
+    enabled: yes
+
+- name: restart apt-daily-upgrade
+  systemd:
+    name: apt-daily-upgrade
+    state: restarted
+    enabled: yes
+
+- name: restart docker
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+
+- name: restart kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+
+- name: restart containerd
+  systemd:
+    name: containerd
+    state: restarted
+    enabled: yes
+
+- name: restart etcd
+  systemd:
+    name: etcd
+    state: restarted
+    enabled: yes
+
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: restart apache2
+  systemd:
+    name: apache2
+    state: restarted
+    enabled: yes
+
+- name: restart mysql
+  systemd:
+    name: mysql
+    state: restarted
+    enabled: yes
+
+- name: restart postgresql
+  systemd:
+    name: postgresql
+    state: restarted
+    enabled: yes
+
+- name: restart redis
+  systemd:
+    name: redis
+    state: restarted
+    enabled: yes
+
+- name: restart memcached
+  systemd:
+    name: memcached
+    state: restarted
+    enabled: yes
+
+- name: restart rabbitmq
+  systemd:
+    name: rabbitmq-server
+    state: restarted
+    enabled: yes
+
+- name: restart elasticsearch
+  systemd:
+    name: elasticsearch
+    state: restarted
+    enabled: yes
+
+- name: restart kibana
+  systemd:
+    name: kibana
+    state: restarted
+    enabled: yes
+
+- name: restart logstash
+  systemd:
+    name: logstash
+    state: restarted
+    enabled: yes
+
+- name: restart grafana
+  systemd:
+    name: grafana-server
+    state: restarted
+    enabled: yes
+
+- name: restart prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+    enabled: yes
+
+- name: restart alertmanager
+  systemd:
+    name: alertmanager
+    state: restarted
+    enabled: yes
+
+- name: restart node_exporter
+  systemd:
+    name: node_exporter
+    state: restarted
+    enabled: yes
+
+- name: restart blackbox_exporter
+  systemd:
+    name: blackbox_exporter
+    state: restarted
+    enabled: yes
+
+- name: restart cadvisor
+  systemd:
+    name: cadvisor
+    state: restarted
+    enabled: yes
+
+- name: restart consul
+  systemd:
+    name: consul
+    state: restarted
+    enabled: yes
+
+- name: restart vault
+  systemd:
+    name: vault
+    state: restarted
+    enabled: yes
+
+- name: restart nomad
+  systemd:
+    name: nomad
+    state: restarted
+    enabled: yes
+
+- name: restart traefik
+  systemd:
+    name: traefik
+    state: restarted
+    enabled: yes
+
+- name: restart envoy
+  systemd:
+    name: envoy
+    state: restarted
+    enabled: yes
+
+- name: restart haproxy
+  systemd:
+    name: haproxy
+    state: restarted
+    enabled: yes
+
+- name: restart keepalived
+  systemd:
+    name: keepalived
+    state: restarted
+    enabled: yes
+
+- name: restart pacemaker
+  systemd:
+    name: pacemaker
+    state: restarted
+    enabled: yes
+
+- name: restart corosync
+  systemd:
+    name: corosync
+    state: restarted
+    enabled: yes
+
+- name: restart pcsd
+  systemd:
+    name: pcsd
+    state: restarted
+    enabled: yes
+
+- name: restart glusterd
+  systemd:
+    name: glusterd
+    state: restarted
+    enabled: yes
+
+- name: restart ceph
+  systemd:
+    name: ceph
+    state: restarted
+    enabled: yes
+
+- name: restart nfs-server
+  systemd:
+    name: nfs-server
+    state: restarted
+    enabled: yes
+
+- name: restart nfs-kernel-server
+  systemd:
+    name: nfs-kernel-server
+    state: restarted
+    enabled: yes
+
+- name: restart smb
+  systemd:
+    name: smbd
+    state: restarted
+    enabled: yes
+
+- name: restart nmb
+  systemd:
+    name: nmbd
+    state: restarted
+    enabled: yes
+
+- name: restart winbind
+  systemd:
+    name: winbind
+    state: restarted
+    enabled: yes
+
+- name: restart slapd
+  systemd:
+    name: slapd
+    state: restarted
+    enabled: yes
+
+- name: restart krb5kdc
+  systemd:
+    name: krb5kdc
+    state: restarted
+    enabled: yes
+
+- name: restart kadmin
+  systemd:
+    name: kadmin
+    state: restarted
+    enabled: yes
+
+- name: restart sssd
+  systemd:
+    name: sssd
+    state: restarted
+    enabled: yes
+
+- name: restart ntp
+  systemd:
+    name: ntp
+    state: restarted
+    enabled: yes
+
+- name: restart chrony
+  systemd:
+    name: chrony
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+    enabled: yes
+
+- name: restart systemd-timesyncd
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+    enabled: yes
+
+- name: restart avahi-daemon
+  systemd:
+    name: avahi-daemon
+    state: restarted
+    enabled: yes
+
+- name: restart cups
+  systemd:
+    name: cups
+    state: restarted
+    enabled: yes
+
+- name: restart cups-browsed
+  systemd:
+    name: cups-browsed
+    state: restarted
+    enabled: yes
+
+- name: restart bluetooth
+  systemd:
+    name: bluetooth
+    state: restarted
+    enabled: yes
+
+- name: restart pulseaudio
+  systemd:
+    name: pulseaudio
+    state: restarted
+    enabled: yes
+
+- name: restart alsa-utils
+  systemd:
+    name: alsa-utils
+    state: restarted
+    enabled: yes
+
+- name: restart x11-common
+  systemd:
+    name: x11-common
+    state: restarted
+    enabled: yes
+
+- name: restart lightdm
+  systemd:
+    name: lightdm
+    state: restarted
+    enabled: yes
+
+- name: restart gdm
+  systemd:
+    name: gdm
+    state: restarted
+    enabled: yes
+
+- name: restart sddm
+  systemd:
+    name: sddm
+    state: restarted
+    enabled: yes
+
+- name: restart slim
+  systemd:
+    name: slim
+    state: restarted
+    enabled: yes
+
+- name: restart lxdm
+  systemd:
+    name: lxdm
+    state: restarted
+    enabled: yes
+
+- name: restart kdm
+  systemd:
+    name: kdm
+    state: restarted
+    enabled: yes
+
+- name: restart xdm
+  systemd:
+    name: xdm
+    state: restarted
+    enabled: yes
+
+- name: restart gdm3
+  systemd:
+    name: gdm3
+    state: restarted
+    enabled: yes
+
+- name: restart slim.service
+  systemd:
+    name: slim.service
+    state: restarted
+    enabled: yes
+
+- name: restart lightdm.service
+  systemd:
+    name: lightdm.service
+    state: restarted
+    enabled: yes
+
+- name: restart sddm.service
+  systemd:
+    name: sddm.service
+    state: restarted
+    enabled: yes
+
+- name: restart lxdm.service
+  systemd:
+    name: lxdm.service
+    state: restarted
+    enabled: yes
+
+- name: restart kdm.service
+  systemd:
+    name: kdm.service
+    state: restarted
+    enabled: yes
+
+- name: restart xdm.service
+  systemd:
+    name: xdm.service
+    state: restarted
+    enabled: yes
+
+- name: restart gdm3.service
+  systemd:
+    name: gdm3.service
+    state: restarted
+    enabled: yes
+
+- name: restart display-manager
+  systemd:
+    name: display-manager
+    state: restarted
+    enabled: yes
+
+- name: restart user@1000
+  systemd:
+    name: user@1000
+    state: restarted
+    enabled: yes
+
+- name: restart user@1001
+  systemd:
+    name: user@1001
+    state: restarted
+    enabled: yes
+
+- name: restart user@1002
+  systemd:
+    name: user@1002
+    state: restarted
+    enabled: yes
+
+- name: restart user@1003
+  systemd:
+    name: user@1003
+    state: restarted
+    enabled: yes
+
+- name: restart user@1004
+  systemd:
+    name: user@1004
+    state: restarted
+    enabled: yes
+
+- name: restart user@1005
+  systemd:
+    name: user@1005
+    state: restarted
+    enabled: yes
+
+- name: restart user@1006
+  systemd:
+    name: user@1006
+    state: restarted
+    enabled: yes
+
+- name: restart user@1007
+  systemd:
+    name: user@1007
+    state: restarted
+    enabled: yes
+
+- name: restart user@1008
+  systemd:
+    name: user@1008
+    state: restarted
+    enabled: yes
+
+- name: restart user@1009
+  systemd:
+    name: user@1009
+    state: restarted
+    enabled: yes
+
+- name: restart user@1010
+  systemd:
+    name: user@1010
+    state: restarted
+    enabled: yes

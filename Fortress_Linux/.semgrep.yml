@@ -1,0 +1,76 @@
+# Semgrep configuration for Fortress Linux security scanning
+
+# Exclude test and build directories
+exclude:
+  - "*/tests/*"
+  - "*/molecule/*"
+  - "*/.git/*"
+  - "*/.venv/*"
+  - "*/venv/*"
+  - "*/env/*"
+
+# Include only relevant file types
+include:
+  - "*.py"
+  - "*.yml"
+  - "*.yaml"
+  - "*.sh"
+
+# Security rules for Python code
+rules:
+  - id: python.lang.security.hardcoded-secret.hardcoded-password
+    pattern: password\s*=\s*['\"]\w+['\"]
+    message: "Hardcoded password detected"
+    languages: [python]
+    severity: ERROR
+
+  - id: python.lang.security.insecure-command.shell-injection
+    pattern: os.system($CMD) | subprocess.run($CMD, shell=True)
+    message: "Potential shell injection vulnerability"
+    languages: [python]
+    severity: ERROR
+
+  - id: python.lang.security.insecure-cryptography.weak-cipher
+    pattern: cryptography.hazmat.primitives.ciphers.algorithms.ARC4 | cryptography.hazmat.primitives.ciphers.algorithms.Blowfish
+    message: "Weak encryption algorithm detected"
+    languages: [python]
+    severity: ERROR
+
+# Security rules for YAML/Ansible
+  - id: yaml.ansible.security.hardcoded-secret
+    pattern: password:\s*\w+ | api_key:\s*\w+ | secret:\s*\w+
+    message: "Hardcoded secret in YAML file"
+    languages: [yaml]
+    severity: ERROR
+
+  - id: yaml.ansible.security.insecure-permissions
+    pattern: mode:\s*['\"]0[0-6][0-7][0-7]['\"]
+    message: "Insecure file permissions detected"
+    languages: [yaml]
+    severity: WARNING
+
+# Security rules for Shell scripts
+  - id: shell.security.hardcoded-secret
+    pattern: password=\w* | api_key=\w* | secret=\w*
+    message: "Hardcoded secret in shell script"
+    languages: [generic]
+    severity: ERROR
+
+  - id: shell.security.insecure-command
+    pattern: eval \$\w+ | curl -s \$URL | wget -q \$URL
+    message: "Potential command injection vulnerability"
+    languages: [generic]
+    severity: WARNING
+
+# General security rules
+  - id: general.security.hardcoded-ip
+    pattern: \b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b
+    message: "Hardcoded IP address detected"
+    languages: [python, yaml, generic]
+    severity: WARNING
+
+  - id: general.security.hardcoded-port
+    pattern: port:\s*\d{1,5}
+    message: "Hardcoded port number detected"
+    languages: [yaml, generic]
+    severity: INFO

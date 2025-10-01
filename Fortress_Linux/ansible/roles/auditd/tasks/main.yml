@@ -1,0 +1,132 @@
+---
+# Main tasks for auditd configuration
+
+- name: Include default variables
+  include_vars: ../defaults/main.yml
+
+- name: Include OS-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | split('.')[0] }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+    - "default.yml"
+
+- name: Install auditd package
+  package:
+    name: "{{ auditd_package }}"
+    state: present
+  when: auditd_enabled
+
+- name: Ensure auditd service is running
+  systemd:
+    name: "{{ auditd_service_name }}"
+    state: started
+    enabled: yes
+  when: auditd_enabled
+
+- name: Create auditd rules directory
+  file:
+    path: "{{ auditd_rules_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  when: auditd_enabled
+
+- name: Backup existing auditd configuration
+  copy:
+    src: "{{ auditd_config_file }}"
+    dest: "{{ auditd_backup_dir }}/auditd.conf.bak-{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+  when: auditd_enabled and auditd_config_backup
+  ignore_errors: yes
+
+- name: Generate auditd configuration
+  template:
+    src: "{{ auditd_config_template }}"
+    dest: "{{ auditd_config_file }}"
+    owner: root
+    group: root
+    mode: '0640'
+  when: auditd_enabled
+  notify: restart auditd
+
+- name: Configure auditd rules
+  template:
+    src: "audit.rules.j2"
+    dest: "{{ auditd_rules_file }}"
+    owner: root
+    group: root
+    mode: '0640'
+  when: auditd_enabled
+  notify: restart auditd
+
+- name: Configure auditd log rotation
+  template:
+    src: "auditd.logrotate.j2"
+    dest: "/etc/logrotate.d/auditd"
+    owner: root
+    group: root
+    mode: '0644'
+  when: auditd_enabled
+
+- name: Set auditd log permissions
+  file:
+    path: "{{ auditd_log_file }}"
+    mode: '0600'
+    owner: root
+    group: root
+  when: auditd_enabled
+
+- name: Ensure auditd log directory exists
+  file:
+    path: "{{ auditd_log_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  when: auditd_enabled
+
+- name: Configure auditd disk space management
+  lineinfile:
+    path: "{{ auditd_config_file }}"
+    regexp: '^{{ item.key }}'
+    line: '{{ item.key }} = {{ item.value }}'
+  with_items:
+    - { key: 'max_log_file', value: '{{ auditd_max_log_file }}' }
+    - { key: 'max_log_file_action', value: '{{ auditd_max_log_file_action }}' }
+    - { key: 'space_left', value: '{{ auditd_space_left }}' }
+    - { key: 'space_left_action', value: '{{ auditd_space_left_action }}' }
+    - { key: 'admin_space_left', value: '{{ auditd_admin_space_left }}' }
+    - { key: 'admin_space_left_action', value: '{{ auditd_admin_space_left_action }}' }
+  when: auditd_enabled
+  notify: restart auditd
+
+- name: Enable auditd at boot
+  systemd:
+    name: "{{ auditd_service_name }}"
+    enabled: yes
+  when: auditd_enabled
+
+- name: Validate auditd configuration
+  command: auditctl -R {{ auditd_rules_file }}
+  register: auditd_validation
+  failed_when: auditd_validation.rc != 0
+  changed_when: false
+  when: auditd_enabled
+
+- name: Display auditd status
+  debug:
+    msg: |
+      Auditd configuration completed.
+      Status: {{ 'Enabled' if auditd_enabled else 'Disabled' }}
+      Service: {{ auditd_service_name }}
+      Config file: {{ auditd_config_file }}
+      Rules file: {{ auditd_rules_file }}
+  when: auditd_enabled
+
+- name: Remove auditd if disabled
+  package:
+    name: "{{ auditd_package }}"
+    state: absent
+  when: not auditd_enabled

@@ -1,0 +1,359 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  static-analysis:
+    name: Static Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit semgrep safety
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r ansible/ scripts/ tests/ \
+            -f json \
+            -o bandit-results.json \
+            || true
+
+      - name: Run Semgrep security scan
+        run: |
+          semgrep --config=auto \
+            --exclude=.git \
+            --exclude=tests/ \
+            --exclude=molecule/ \
+            --json \
+            --output=semgrep-results.json \
+            . \
+            || true
+
+      - name: Run Safety dependency check
+        run: |
+          safety check --json --output=safety-results.json || true
+
+      - name: Upload static analysis results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: static-analysis-results
+          path: |
+            bandit-results.json
+            semgrep-results.json
+            safety-results.json
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build test container
+        run: |
+          docker build -t fortress-linux:security-test .
+
+      - name: Run Trivy vulnerability scan
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest \
+            image --format json --output=trivy-image-results.json \
+            fortress-linux:security-test \
+            || true
+
+      - name: Run Grype vulnerability scan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype fortress-linux:security-test --output json > grype-results.json || true
+
+      - name: Upload container scan results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: container-security-results
+          path: |
+            trivy-image-results.json
+            grype-results.json
+
+  secret-detection:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks secret detection
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            zricethezav/gitleaks:latest \
+            detect --source=/src --format=json --report=gitleaks-results.json \
+            || true
+
+      - name: Run TruffleHog secret detection
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            trufflesecurity/trufflehog:latest \
+            filesystem --json --output=trufflehog-results.json /src \
+            || true
+
+      - name: Upload secret detection results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: secret-detection-results
+          path: |
+            gitleaks-results.json
+            trufflehog-results.json
+
+  iac-security:
+    name: Infrastructure as Code Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov IaC security scan
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            bridgecrew/checkov:latest \
+            --directory /src \
+            --format json \
+            --output checkov-results.json \
+            || true
+
+      - name: Run tfsec Ansible security scan
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            liamg/tfsec:latest \
+            /src \
+            --format json \
+            --out tfsec-results.json \
+            || true
+
+      - name: Upload IaC security results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: iac-security-results
+          path: |
+            checkov-results.json
+            tfsec-results.json
+
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install license checking tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
+
+      - name: Check Python package licenses
+        run: |
+          pip-licenses --format=json --output=license-results.json || true
+
+      - name: Run FOSSA license scan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sh
+          fossa analyze || true
+
+      - name: Upload license compliance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: license-compliance-results
+          path: license-results.json
+
+  compliance-benchmark:
+    name: Compliance Benchmark Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install compliance tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+
+      - name: Run CIS benchmark tests
+        run: |
+          pytest tests/ \
+            --compliance \
+            -v \
+            --tb=short \
+            --html=cis-compliance-results.html \
+            --self-contained-html \
+            || true
+
+      - name: Run Lynis security audit
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            cisagov/lynis:latest \
+            audit system --quiet --json-report lynis-results.json \
+            || true
+
+      - name: Upload compliance benchmark results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: compliance-benchmark-results
+          path: |
+            cis-compliance-results.html
+            lynis-results.json
+
+  generate-security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [static-analysis, container-security, secret-detection, iac-security, license-compliance, compliance-benchmark]
+    if: always()
+    steps:
+      - name: Download all security artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate security summary report
+        run: |
+          cat > security-summary.md << EOF
+          # Security Scan Summary
+
+          ## Static Analysis
+          $(cat static-analysis-results/bandit-results.json 2>/dev/null | jq -r '.results | length' 2>/dev/null || echo "0") Bandit findings
+          $(cat static-analysis-results/semgrep-results.json 2>/dev/null | jq -r '.results | length' 2>/dev/null || echo "0") Semgrep findings
+          $(cat static-analysis-results/safety-results.json 2>/dev/null | jq -r '.vulnerabilities | length' 2>/dev/null || echo "0") Safety vulnerabilities
+
+          ## Container Security
+          $(cat container-security-results/trivy-image-results.json 2>/dev/null | jq -r '.Results | length' 2>/dev/null || echo "0") Trivy findings
+          $(cat container-security-results/grype-results.json 2>/dev/null | jq -r '.matches | length' 2>/dev/null || echo "0") Grype findings
+
+          ## Secret Detection
+          $(cat secret-detection-results/gitleaks-results.json 2>/dev/null | jq -r '. | length' 2>/dev/null || echo "0") Gitleaks findings
+          $(cat secret-detection-results/trufflehog-results.json 2>/dev/null | jq -r '. | length' 2>/dev/null || echo "0") TruffleHog findings
+
+          ## IaC Security
+          $(cat iac-security-results/checkov-results.json 2>/dev/null | jq -r '.results.failed_checks | length' 2>/dev/null || echo "0") Checkov findings
+
+          Generated on: $(date)
+          EOF
+
+      - name: Upload security summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-summary
+          path: security-summary.md
+
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: generate-security-report
+    if: always()
+    steps:
+      - name: Download security artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Check critical security findings
+        run: |
+          # Check for critical vulnerabilities
+          critical_count=$(cat container-security-results/trivy-image-results.json 2>/dev/null | jq -r '.Results[].Vulnerabilities[] | select(.Severity == "CRITICAL") | length' 2>/dev/null | awk '{sum += $1} END {print sum+0}')
+
+          # Check for secrets
+          secret_count=$(cat secret-detection-results/gitleaks-results.json 2>/dev/null | jq -r '. | length' 2>/dev/null || echo "0")
+
+          echo "Critical vulnerabilities: $critical_count"
+          echo "Secrets found: $secret_count"
+
+          # Security gate conditions
+          if [ "$critical_count" -gt 5 ] || [ "$secret_count" -gt 0 ]; then
+            echo "::error::Security gate failed: Critical vulnerabilities or secrets found"
+            exit 1
+          else
+            echo "::notice::Security gate passed"
+          fi
+
+      - name: Generate security badge
+        run: |
+          # Create security status badge
+          if [ "${{ needs.generate-security-report.result }}" == "success" ]; then
+            echo "SECURITY_STATUS=passing" >> $GITHUB_ENV
+          else
+            echo "SECURITY_STATUS=failing" >> $GITHUB_ENV
+          fi
+
+  notify-security:
+    name: Security Notifications
+    runs-on: ubuntu-latest
+    needs: security-gate
+    if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
+    steps:
+      - name: Send security notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.security-gate.result }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: 'Security scan completed'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
+
+      - name: Comment on PR with security results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const result = needs.security-gate.result;
+            const message = result === 'success'
+              ? '🛡️ Security scan completed successfully. No critical issues found.'
+              : '⚠️ Security scan found issues that need attention. Please review the security artifacts.';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
