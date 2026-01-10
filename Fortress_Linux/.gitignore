@@ -233,9 +233,7 @@ $RECYCLE.BIN/
 
 # Ansible specific
 *.retry
-ansible.cfg
 hosts
-inventory/
 group_vars/
 host_vars/
 

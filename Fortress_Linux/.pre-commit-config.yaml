@@ -1,0 +1,85 @@
+# Pre-commit hooks configuration for Fortress Linux
+
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(templates/.*\.j2|.*\.md)$
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^(molecule/.*\.yml|\.github/workflows/.*\.yml)$
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-executables-have-shebangs
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning', '--exclude=SC1090,SC1091']
+        files: ^.*\.sh$
+
+  # Python formatting and linting
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        language_version: python3.9
+        files: ^(tests/.*\.py|.*\.py)$
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=120', '--ignore=E501,W503']
+        files: ^(tests/.*\.py|.*\.py)$
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: ['-f', 'text', '-ll', '-i']
+        files: ^(tests/.*\.py|scripts/.*\.py)$
+        exclude: ^tests/test_.*\.py$
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ['-c', '.github/yamllint.yml']
+        files: ^(.*\.yml|.*\.yaml)$
+
+  # Ansible linting
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.0.0
+    hooks:
+      - id: ansible-lint
+        args: ['--force-color', '--exclude=.git']
+        files: ^(ansible/.*\.yml|playbooks/.*\.yml)$
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore', 'DL3008', '--ignore', 'DL3013']
+
+  # Check for secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: ^(tests/.*\.fixtures|.*\.json|.*\.xml|.*\.pyc)$
