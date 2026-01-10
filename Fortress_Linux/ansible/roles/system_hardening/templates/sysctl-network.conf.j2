@@ -1,0 +1,6 @@
+# Network sysctl configuration
+# /etc/sysctl.d/network.conf
+
+{% for item in system_hardening_network_sysctl_settings %}
+{{ item.name }} = {{ item.value }}
+{% endfor %}

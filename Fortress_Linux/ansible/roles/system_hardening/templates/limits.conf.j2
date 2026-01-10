@@ -1,0 +1,15 @@
+# /etc/security/limits.conf configuration
+# System resource limits
+
+*	soft	nproc	1024
+*	hard	nproc	2048
+*	soft	nofile	4096
+*	hard	nofile	8192
+*	soft	memlock	256000
+*	hard	memlock	256000
+*	soft	sigpending	{{ system_hardening_login_defs.PASS_MAX_LEN * 10 }}
+*	hard	sigpending	{{ system_hardening_login_defs.PASS_MAX_LEN * 10 }}
+root	soft	nproc	unlimited
+root	hard	nproc	unlimited
+root	soft	nofile	unlimited
+root	hard	nofile	unlimited

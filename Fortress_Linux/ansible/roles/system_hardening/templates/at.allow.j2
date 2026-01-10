@@ -1,0 +1,7 @@
+# /etc/at.allow
+# Users allowed to use at
+
+root
+{% for item in at_allowed_users | default([]) %}
+{{ item }}
+{% endfor %}

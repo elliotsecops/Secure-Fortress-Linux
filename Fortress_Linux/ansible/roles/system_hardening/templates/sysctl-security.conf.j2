@@ -1,0 +1,6 @@
+# Security sysctl configuration
+# /etc/sysctl.d/security.conf
+
+{% for item in system_hardening_arp_sysctl_settings %}
+{{ item.name }} = {{ item.value }}
+{% endfor %}

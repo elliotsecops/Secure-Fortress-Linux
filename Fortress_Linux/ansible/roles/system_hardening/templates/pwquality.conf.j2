@@ -1,0 +1,14 @@
+# /etc/security/pwquality.conf configuration
+# Password quality requirements
+
+minlen = {{ system_hardening_login_defs.PASS_MAX_LEN }}
+minclass = 4
+maxrepeat = 3
+dcredit = -1
+ucredit = -1
+lcredit = -1
+ocredit = -1
+difok = 3
+maxsequence = 3
+gecoscheck = 1
+enforce_for_root

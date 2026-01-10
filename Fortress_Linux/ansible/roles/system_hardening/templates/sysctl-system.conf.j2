@@ -1,0 +1,6 @@
+# System sysctl configuration
+# /etc/sysctl.d/system.conf
+
+{% for item in system_hardening_kernel_sysctl_settings %}
+{{ item.name }} = {{ item.value }}
+{% endfor %}

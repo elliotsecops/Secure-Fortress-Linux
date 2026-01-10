@@ -1,0 +1,7 @@
+# /etc/cron.allow
+# Users allowed to use cron
+
+root
+{% for item in cron_allowed_users | default([]) %}
+{{ item }}
+{% endfor %}

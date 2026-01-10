@@ -1,0 +1,14 @@
+# /etc/sudoers configuration
+# Sudo access control
+
+Defaults	env_reset
+Defaults	mail_badpass
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults	!pwfeedback
+Defaults	timestamp_timeout=15
+Defaults	use_pty
+Defaults	log_output
+Defaults	log_input
+
+root	ALL=(ALL:ALL) ALL
+%sudo	ALL=(ALL:ALL) ALL
