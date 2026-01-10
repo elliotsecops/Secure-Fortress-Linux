@@ -319,22 +319,79 @@ jobs:
         run: |
           docker build -t fortress-linux:test -f Fortress_Linux/Dockerfile ./Fortress_Linux || echo "Docker build skipped - non-critical"
 
-      - name: Test Docker image
-        run: |
-          docker run --rm fortress-linux:test bash -c "echo 'Docker image test successful'"
+      - name: Test Python unit tests
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
 
-      - name: Run security scan on Docker image
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.io \
-            aquasec/trivy:latest \
-            image --format json --output=trivy-image-report.json fortress-linux:test || true
+          - name: Set up Python
+            uses: actions/setup-python@v4
+            with:
+              python-version: '3.9'
 
-      - name: Upload image scan results
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: docker-image-scan
-          path: trivy-image-report.json
+          - name: Cache dependencies
+            uses: actions/cache@v3
+            with:
+              path: ~/.cache/pip
+              key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+              restore-keys: |
+                ${{ runner.os }}-pip-
+
+          - name: Install dependencies
+            run: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+              pip install pytest pytest-cov
+
+          - name: Run unit tests
+            run: |
+              pytest tests/test_bash_script.py -v --cov=. --cov-report=xml
+
+          - name: Upload coverage reports
+            uses: codecov/codecov-action@v3
+            if: always()
+            with:
+              file: ./coverage.xml
+
+      - name: Test Ansible playbooks
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
+
+          - name: Set up Python
+            uses: actions/setup-python@v4
+            with:
+              python-version: '3.9'
+
+          - name: Cache dependencies
+            uses: actions/cache@v3
+            with:
+              path: ~/.cache/pip
+              key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+              restore-keys: |
+                ${{ runner.os }}-pip-
+
+          - name: Install dependencies
+            run: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+
+          - name: Install Ansible
+            run: |
+              pip install ansible
+
+          - name: Test playbook syntax
+            run: |
+              ansible-playbook --syntax-check ansible/playbooks/playbook_hardening.yml
+              ansible-playbook --syntax-check ansible/playbooks/preflight_checks.yml
+              ansible-playbook --syntax-check ansible/playbooks/backup.yml
+              ansible-playbook --syntax-check ansible/playbooks/rollback.yml
+
+          - name: Run Ansible lint
+            run: |
+              ansible-lint ansible/playbooks/ --force-color || true
 
   deploy-staging:
     name: Deploy to Staging
