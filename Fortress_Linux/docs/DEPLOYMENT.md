@@ -1,328 +1,417 @@
-# Fortress Linux - Deployment Guide
+# Deployment Guide
 
-This guide provides detailed instructions for deploying Fortress Linux across different environments and configurations.
+This guide covers deployment options for Fortress Linux across different environments.
 
-## 📋 Prerequisites
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Development Environment](#development-environment)
+- [Production Deployment](#production-deployment)
+- [Multi-environment Deployment](#multi-environment-deployment)
+- [Troubleshooting](#troubleshooting)
+
+## Prerequisites
 
 ### System Requirements
-- **Operating System**: Ubuntu 18.04+ or Debian 9+
+- **Operating System**: Ubuntu 18.04+ or Debian 10+
 - **Architecture**: x86_64 or ARM64
-- **Memory**: Minimum 2GB RAM
-- **Storage**: Minimum 10GB free disk space
+- **Memory**: Minimum 512MB RAM (1GB+ recommended)
+- **Storage**: Minimum 2GB free disk space
 - **Network**: Internet connection for package installation
 
-### Software Requirements
-- **Ansible**: Version 2.9+ (for automated deployment)
-- **Python**: Version 3.6+
-- **SSH**: Key-based authentication configured
-- **Git**: For repository cloning
-
-### Access Requirements
-- **Root Access**: Administrative privileges on target systems
-- **SSH Access**: Working SSH connection to target systems
-- **Backup**: System backup recommended before deployment
-
-## 🚀 Deployment Methods
-
-### Method 1: Automated Ansible Deployment
-
-#### 1. Setup Control Machine
+### Software Dependencies
 ```bash
-# Install Ansible
+# Install required packages
 sudo apt update
-sudo apt install ansible python3-pip -y
-
-# Install required collections
-ansible-galaxy collection install -r requirements.yml
-
-# Install Python dependencies
-pip3 install -r requirements.txt
+sudo apt install -y \
+    python3 \
+    python3-pip \
+    git \
+    curl \
+    ansible \
+    ufw \
+    auditd
 ```
 
-#### 2. Configure Inventory
-```bash
-# Edit inventory file
-nano ansible/inventory/hosts
+## Quick Start
 
-# Example configuration:
-[webservers]
-server1 ansible_user=admin ansible_host=192.168.1.10
-server2 ansible_user=admin ansible_host=192.168.1.11
+### Clone Repository
+```bash
+git clone https://github.com/elliotsecops/Secure-Fortress-Linux.git
+cd Secure-Fortress-Linux/Fortress_Linux
 ```
 
-#### 3. Configure Variables
+### Option 1: Bash Script Deployment
 ```bash
-# Edit global variables
-nano ansible/group_vars/all/main.yml
-
-# Set Wazuh manager IP
-wazuh_manager_ip: "192.168.1.100"
-
-# Configure security level
-security_level: "high"
-```
-
-#### 4. Run Deployment
-```bash
-# Test connectivity
-ansible -i ansible/inventory/hosts all -m ping
-
-# Run hardening playbook
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
-
-# Run with specific tags
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml --tags "firewall,ssh"
-```
-
-### Method 2: Manual Bash Script Deployment
-
-#### 1. Clone Repository
-```bash
-git clone https://github.com/your-username/fortress-linux.git
-cd fortress-linux
-```
-
-#### 2. Make Script Executable
-```bash
+# Make script executable
 chmod +x scripts/linux_hardening.sh
+
+# Run with default settings
+sudo bash scripts/linux_hardening.sh
+
+# Run with custom options
+sudo bash scripts/linux_hardening.sh --minimal --log-level debug
 ```
 
-#### 3. Run Hardening Script
+### Option 2: Ansible Deployment
 ```bash
-# Test script syntax first
-bash -n scripts/linux_hardening.sh
+# Install Ansible dependencies
+pip3 install -r requirements.txt
 
-# Execute hardening
-sudo ./scripts/linux_hardening.sh
+# Configure inventory
+cp ansible/inventory/development.ini ansible/inventory/custom.ini
+nano ansible/inventory/custom.ini  # Edit as needed
+
+# Run playbook
+ansible-playbook -i ansible/inventory/custom.ini ansible/playbooks/playbook_hardening.yml
 ```
 
-### Method 3: Containerized Deployment
+## Development Environment
 
-#### 1. Build Container
+### Setup Development Environment
 ```bash
-# Create Dockerfile
-cat > Dockerfile << EOF
-FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y ansible python3
-COPY . /fortress-linux
-WORKDIR /fortress-linux
-CMD ["ansible-playbook", "-i", "ansible/inventory/hosts", "ansible/playbooks/playbook_hardening.yml"]
-EOF
+# Run the setup script
+./scripts/setup-dev-environment.sh
 
-# Build image
-docker build -t fortress-linux .
+# Install pre-commit hooks
+./scripts/setup-precommit.sh
+
+# Verify installation
+pre-commit run --all-files
 ```
 
-#### 2. Run Container
+### Run Tests
 ```bash
-docker run -it fortress-linux
+# Run unit tests
+pytest tests/
+
+# Run Molecule tests
+cd molecule/default
+molecule test
+
+# Run specific platform test
+molecule test --platform-name ubuntu-22.04
 ```
 
-## 🌍 Environment-Specific Deployments
-
-### Development Environment
+### Development Workflow
 ```bash
-# Development-specific inventory
-[development]
-dev-server ansible_user=dev ansible_host=192.168.1.100
+# 1. Create feature branch
+git checkout -b feature/new-feature
 
-# Development variables
-[development:vars]
-security_level: "medium"
-auto_updates_enabled: false
-backup_enabled: false
+# 2. Make changes and test
+nano ansible/roles/system_hardening/tasks/main.yml
+pytest tests/test_system_hardening.py
+
+# 3. Run pre-commit hooks
+git add .
+git commit -m "Add new feature"
+
+# 4. Push and create PR
+git push origin feature/new-feature
 ```
 
-### Testing Environment
-```bash
-# Testing-specific inventory
-[testing]
-test-server ansible_user=test ansible_host=192.168.1.200
+## Production Deployment
 
-# Testing variables
-[testing:vars]
-security_level: "high"
-auto_updates_enabled: true
-backup_enabled: true
-environment: "testing"
+### Production Inventory Setup
+```bash
+# Copy production template
+cp ansible/inventory/production.ini ansible/inventory/production.ini
+
+# Edit inventory with your servers
+nano ansible/inventory/production.ini
 ```
 
-### Production Environment
-```bash
-# Production-specific inventory
-[production]
-prod-server ansible_user=admin ansible_host=192.168.1.10
+### Production Inventory Example
+```ini
+[webservers]
+web-prod-01 ansible_host=10.0.1.10 ansible_user=admin
+web-prod-02 ansible_host=10.0.1.11 ansible_user=admin
 
-# Production variables
+[databases]
+db-prod-01 ansible_host=10.0.2.10 ansible_user=admin
+db-prod-02 ansible_host=10.0.2.11 ansible_user=admin
+
+[production:children]
+webservers
+databases
+
 [production:vars]
-security_level: "critical"
-auto_updates_enabled: true
-backup_enabled: true
-monitoring_enabled: true
+security_level=critical
+auto_updates_enabled=true
+backup_enabled=true
+monitoring_enabled=true
+wazuh_manager_ip=10.0.0.100
+
+# Security settings
+firewall_enabled=true
+auditd_enabled=true
+ssh_hardening_enabled=true
+fail2ban_enabled=true
+
+# Allowed ports
+firewall_allowed_ports:
+  - { port: 80, proto: tcp, comment: "HTTP" }
+  - { port: 443, proto: tcp, comment: "HTTPS" }
+  - { port: 22, proto: tcp, comment: "SSH" }
 ```
 
-## 🔧 Configuration Management
-
-### Variable Hierarchy
-Ansible variables are loaded in this order:
-1. Command line values (-e)
-2. Role defaults
-3. Inventory file variables
-4. Inventory group variables
-5. Inventory host variables
-6. Play group variables
-7. Play host variables
-
-### Custom Configuration Files
+### Pre-flight Checks
 ```bash
-# Create custom group variables
-ansible/group_vars/webservers/security.yml
-ansible/group_vars/databases/security.yml
-
-# Create custom host variables
-ansible/host_vars/server1/custom_config.yml
+# Run pre-flight validation
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/preflight_checks.yml
 ```
 
-## 📊 Monitoring and Logging
-
-### Deployment Monitoring
+### Create Backup
 ```bash
-# Check deployment status
-ansible-playbook --list-hosts -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
-
-# Monitor deployment logs
-tail -f logs/deployment.log
-
-# Check system status after deployment
-ansible -i ansible/inventory/hosts all -m command -a "systemctl status"
+# Create backup before hardening
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/backup.yml
 ```
 
-### Post-Deployment Verification
+### Deploy Hardening
 ```bash
-# Verify firewall rules
-ansible -i ansible/inventory/hosts all -m command -a "ufw status"
+# Execute hardening playbook
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml
+
+# Run with extra variables
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml \
+    -e "system_hardening_enabled=true"
+    -e "firewall_enabled=true"
+```
+
+### Post-deployment Verification
+```bash
+# Check firewall status
+ansible -i ansible/inventory/production.ini all -m shell -a "sudo ufw status"
 
 # Check SSH configuration
-ansible -i ansible/inventory/hosts all -m command -a "sshd -T | grep -E 'permitrootlogin|passwordauthentication'"
+ansible -i ansible/inventory/production.ini all -m shell -a "sudo sshd -T | grep -E 'PermitRootLogin|PasswordAuthentication'"
 
-# Verify Wazuh agent
-ansible -i ansible/inventory/hosts all -m command -a "systemctl status wazuh-agent"
+# Check auditd status
+ansible -i ansible/inventory/production.ini all -m shell -a "sudo systemctl status auditd"
 ```
 
-## 🔄 Rollback Procedures
+## Multi-environment Deployment
 
-### Method 1: Ansible Rollback
+### Environment Inventory Structure
 ```bash
-# Create backup before deployment
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/backup.yml
-
-# Restore from backup
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/restore.yml
+ansible/inventory/
+├── development.ini    # Development environment
+├── testing.ini       # QA/testing environment
+├── production.ini    # Production environment
+└── minimal.ini       # Resource-constrained systems
 ```
 
-### Method 2: System Restore
+### Deploy to Multiple Environments
 ```bash
-# Using Timeshift (if available)
-sudo timeshift --restore
+# Deploy to development
+ansible-playbook -i ansible/inventory/development.ini \
+    ansible/playbooks/playbook_hardening.yml
 
-# Manual configuration restore
-sudo cp /etc/backup/sshd_config /etc/ssh/sshd_config
+# Deploy to testing
+ansible-playbook -i ansible/inventory/testing.ini \
+    ansible/playbooks/playbook_hardening.yml
+
+# Deploy to production
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml
+```
+
+### Configuration Management
+```bash
+# Use ansible.cfg for environment-specific settings
+export ANSIBLE_CONFIG=./ansible/ansible.cfg
+
+# Or use different config files
+ansible-playbook -i development.ini -e @group_vars/development.yml playbook.yml
+ansible-playbook -i production.ini -e @group_vars/production.yml playbook.yml
+```
+
+## Troubleshooting
+
+### Common Deployment Issues
+
+#### 1. Permission Denied Errors
+```bash
+# Ensure running as root or with sudo
+ansible-playbook -i inventory.ini playbook.yml --ask-become-pass
+
+# Or use become in inventory
+[all:vars]
+ansible_become=true
+ansible_become_method=sudo
+```
+
+#### 2. SSH Connection Issues
+```bash
+# Test SSH connection
+ssh -i ~/.ssh/id_rsa admin@your-server
+
+# Check SSH config
+cat ~/.ssh/config
+
+# Use verbose mode
+ansible-playbook -i inventory.ini playbook.yml -vvv
+```
+
+#### 3. Package Installation Failures
+```bash
+# Update package cache first
+ansible -i inventory.ini all -m apt -a "update_cache=yes"
+
+# Install dependencies manually
+ansible -i inventory.ini all -m apt -a "name=python3-pip state=present"
+```
+
+#### 4. Molecule Test Failures
+```bash
+# Check Molecule configuration
+cat molecule/default/molecule.yml
+
+# Verify Docker is running
+docker ps
+
+# Clean up and retry
+molecule destroy
+molecule test
+```
+
+### Recovery Procedures
+
+#### Rollback from Backup
+```bash
+# Restore from latest backup
+ansible-playbook -i ansible/inventory/custom.ini \
+    ansible/playbooks/rollback.yml
+
+# Or restore specific backup
+ansible-playbook -i ansible/inventory/custom.ini \
+    ansible/playbooks/rollback.yml \
+    -e "backup_date=20260110_120000"
+```
+
+#### Manual Recovery
+```bash
+# Restore SSH configuration manually
+sudo cp /etc/fortress-backups/latest/sshd_config /etc/ssh/sshd_config
 sudo systemctl restart sshd
+
+# Restore firewall manually
+sudo cp /etc/fortress-backups/latest/ufw.conf /etc/ufw/ufw.conf
+sudo ufw reload
+
+# Restore auditd manually
+sudo cp /etc/fortress-backups/latest/auditd.conf /etc/audit/auditd.conf
+sudo systemctl restart auditd
 ```
 
-## 🚨 Troubleshooting
+### Logging and Debugging
 
-### Common Issues
-
-#### SSH Connection Problems
+#### Check Logs
 ```bash
-# Test SSH connectivity
-ssh -i ~/.ssh/id_rsa admin@server-ip
+# Check hardening log
+tail -f /var/log/fortress-hardening.log
 
-# Check Ansible SSH settings
-ansible -i ansible/inventory/hosts all -m ping -vvv
+# Check Ansible log
+tail -f logs/ansible.log
+
+# Check backup log
+tail -f /var/log/fortress-backup-restore.log
 ```
 
-#### Permission Issues
+#### Enable Debug Mode
 ```bash
-# Verify sudo access
-ansible -i ansible/inventory/hosts all -m command -a "whoami" --become
+# Ansible debug mode
+ansible-playbook -i inventory.ini playbook.yml -vvv
 
-# Check privilege escalation
-ansible-playbook --check -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
+# Bash script debug mode
+sudo bash scripts/linux_hardening.sh --log-level debug
+
+# Molecule debug mode
+molecule test --debug
 ```
 
-#### Package Installation Failures
+## Verification Checklist
+
+### Post-deployment Verification
+- [ ] Firewall is active and configured
+- [ ] SSH hardening is applied
+- [ ] Auditd is running and logging
+- [ ] Password policies are enforced
+- [ ] Unnecessary services are disabled
+- [ ] File permissions are secured
+- [ ] Backup was created successfully
+- [ ] All services are running
+
+### Security Verification
 ```bash
-# Update package cache
-ansible -i ansible/inventory/hosts all -m apt -a "update_cache=yes"
+# Run comprehensive security check
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/security_verification.yml
 
-# Fix broken packages
-ansible -i ansible/inventory/hosts all -m command -a "apt --fix-broken install"
+# Or use system check script
+./scripts/system_check.sh
 ```
 
-### Debug Commands
+## Advanced Topics
+
+### Rolling Updates
 ```bash
-# Dry run (check mode)
-ansible-playbook --check -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
+# Update servers one at a time
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml \
+    --limit "web-prod-01"
 
-# Verbose output
-ansible-playbook -vvv -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
-
-# Step-by-step execution
-ansible-playbook --step -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml \
+    --limit "web-prod-02"
 ```
 
-## 📈 Scaling Deployment
-
-### Large-Scale Deployments
+### Custom Variables
 ```bash
-# Increase parallel execution
-ansible-playbook -f 50 -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml
+# Create custom variables file
+cat > custom_vars.yml << 'EOF'
+system_hardening_enabled: true
+firewall_enabled: true
+ssh_hardening_enabled: true
+auditd_enabled: false
+custom_firewall_rules:
+  - { port: 8443, proto: tcp, comment: "Custom HTTPS" }
+EOF
 
-# Use asynchronous tasks
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/playbook_hardening.yml --async
+# Use custom variables
+ansible-playbook -i inventory.ini playbook.yml -e @custom_vars.yml
 ```
 
-### Multi-Environment Management
+### Schedule Hardening
 ```bash
-# Environment-specific playbooks
-ansible-playbook -i environments/dev/inventory ansible/playbooks/playbook_hardening.yml
-ansible-playbook -i environments/prod/inventory ansible/playbooks/playbook_hardening.yml
+# Add cron job for weekly updates
+echo "0 2 * * 0 root ansible-playbook -i /path/to/inventory.ini /path/to/playbook.yml" | sudo tee -a /etc/cron.d/fortress-hardening
+
+# Or use systemd timer
+sudo tee /etc/systemd/system/fortress-hardening.timer << 'EOF'
+[Unit]
+Description=Weekly Fortress Linux hardening
+
+[Timer]
+OnCalendar=Sun 02:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl enable --now fortress-hardening.timer
 ```
 
-## 🎯 Best Practices
+## Support
 
-### Pre-Deployment Checklist
-- [ ] Test in development environment first
-- [ ] Create system backup
-- [ ] Verify SSH key-based authentication
-- [ ] Check disk space availability
-- [ ] Verify network connectivity
-- [ ] Review security requirements
-- [ ] Plan rollback procedures
-
-### Post-Deployment Checklist
-- [ ] Verify all services are running
-- [ ] Test SSH access
-- [ ] Check firewall rules
-- [ ] Verify monitoring systems
-- [ ] Test backup procedures
-- [ ] Update documentation
-- [ ] Notify stakeholders
-
-## 📚 Additional Resources
-
-### Documentation
-- [Ansible Documentation](https://docs.ansible.com/)
-- [Ubuntu Security Guide](https://ubuntu.com/security)
-- [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
-
-### Support
-- **Issues**: GitHub issues for bugs and feature requests
-- **Discussions**: Community discussions for general questions
-- **Security**: security@example.com for security vulnerabilities
-
----
-
-This deployment guide provides comprehensive instructions for deploying Fortress Linux across various environments and scales.
+For additional help:
+- Check the [README.md](README.md)
+- Review [SECURITY.md](docs/SECURITY.md)
+- Open an issue on GitHub
+- Check logs in `/var/log/fortress-hardening.log`
