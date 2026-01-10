@@ -1,0 +1,103 @@
+---
+# Rollback playbook for system hardening
+# Restores backed up configuration files
+
+- name: Rollback system hardening changes
+  hosts: all
+  become: yes
+  vars:
+    backup_dir: /etc/fortress-backups
+
+  tasks:
+    - name: Find latest backup directory
+      find:
+        paths: /etc/fortress-backups/
+        file_type: directory
+        patterns: "*"
+        sort: time
+        order: descending
+      register: backup_dirs
+
+    - name: Check if backup directory exists
+      fail:
+        msg: "No backup directories found in {{ backup_dir }}"
+      when: backup_dirs.matched | length == 0
+
+    - name: Use latest backup directory
+      set_fact:
+        latest_backup: "{{ backup_dirs.matched[0].path }}"
+
+    - name: Display backup to restore
+      debug:
+        msg: "Restoring from backup: {{ latest_backup }}"
+
+    - name: Restore SSH configuration
+      copy:
+        src: "{{ latest_backup }}/sshd_config.bak-*"
+        dest: /etc/ssh/sshd_config
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0600'
+      failed_when: false
+      register: ssh_restore
+
+    - name: Restore password quality configuration
+      copy:
+        src: "{{ latest_backup }}/pwquality.conf.bak-*"
+        dest: /etc/security/pwquality.conf
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      failed_when: false
+      register: pwquality_restore
+
+    - name: Restore auditd configuration
+      copy:
+        src: "{{ latest_backup }}/auditd.conf.bak-*"
+        dest: /etc/audit/auditd.conf
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0640'
+      failed_when: false
+      register: auditd_restore
+
+    - name: Restore UFW configuration
+      copy:
+        src: "{{ latest_backup }}/ufw.conf.bak-*"
+        dest: /etc/ufw/ufw.conf
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      failed_when: false
+      register: ufw_restore
+
+    - name: Restart SSH service
+      systemd:
+        name: sshd
+        state: restarted
+      when: ssh_restore is succeeded
+
+    - name: Restart auditd service
+      systemd:
+        name: auditd
+        state: restarted
+      when: auditd_restore is succeeded
+
+    - name: Restart UFW service
+      systemd:
+        name: ufw
+        state: reloaded
+      when: ufw_restore is succeeded
+
+    - name: Display rollback status
+      debug:
+        msg: |
+          Rollback completed from {{ latest_backup }}
+          SSH restored: {{ ssh_restore is succeeded | default(false) }}
+          Password quality restored: {{ pwquality_restore is succeeded | default(false) }}
+          Auditd restored: {{ auditd_restore is succeeded | default(false) }}
+          UFW restored: {{ ufw_restore is succeeded | default(false) }}

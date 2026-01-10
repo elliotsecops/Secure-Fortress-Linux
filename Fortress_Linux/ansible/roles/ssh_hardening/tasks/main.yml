@@ -1,0 +1,68 @@
+---
+# Main tasks for SSH hardening
+
+- name: Include default variables
+  include_vars: ../defaults/main.yml
+
+- name: Include OS-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | split('.')[0] }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+    - "default.yml"
+
+- name: Ensure SSH is installed
+  package:
+    name: "{{ ssh_package | default('openssh-server') }}"
+    state: present
+  when: ssh_hardening_enabled
+
+- name: Create SSH banner
+  copy:
+    content: "{{ ssh_banner_content }}"
+    dest: "{{ ssh_banner_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: ssh_hardening_enabled
+
+- name: Backup SSH configuration
+  copy:
+    src: "{{ ssh_config_path }}"
+    dest: "{{ ssh_config_path }}.bak-{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+  when: ssh_hardening_enabled
+  ignore_errors: yes
+
+- name: Configure SSH security settings
+  lineinfile:
+    path: "{{ ssh_config_path }}"
+    regexp: '^#?{{ item.key }}'
+    line: '{{ item.key }} {{ item.value }}'
+    state: present
+    create: yes
+  with_dict: "{{ ssh_config }}"
+  when: ssh_hardening_enabled
+  notify: restart sshd
+
+- name: Validate SSH configuration
+  command: "{{ sshd_test_command | default('sshd -t') }}"
+  register: ssh_validation
+  changed_when: false
+  failed_when: ssh_validation.rc != 0
+  when: ssh_hardening_enabled
+
+- name: Ensure SSH service is enabled
+  systemd:
+    name: "{{ ssh_service_name }}"
+    enabled: yes
+  when: ssh_hardening_enabled
+
+- name: Display SSH hardening status
+  debug:
+    msg: |
+      SSH hardening configuration completed.
+      Status: {{ 'Enabled' if ssh_hardening_enabled else 'Disabled' }}
+      Config file: {{ ssh_config_path }}
+      Banner: {{ ssh_banner_path }}
+  when: ssh_hardening_enabled

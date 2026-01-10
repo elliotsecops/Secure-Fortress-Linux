@@ -1,0 +1,41 @@
+---
+# Default variables for SSH hardening role
+
+# Enable/disable SSH hardening
+ssh_hardening_enabled: true
+
+# SSH port
+ssh_port: 22
+
+# SSH banner path
+ssh_banner_path: /etc/ssh/banner
+
+# SSH banner content
+ssh_banner_content: |
+  ***************************************************************************
+                            AUTHORIZED ACCESS ONLY
+  ***************************************************************************
+  This system is for authorized users only. Individual use of this system
+  and/or network without authority, or in excess of your authority, is
+  strictly prohibited. Unauthorized access is a violation of state and
+  federal, civil and criminal laws.
+  ***************************************************************************
+
+# SSH configuration settings
+ssh_config:
+  PermitRootLogin: no
+  PasswordAuthentication: no
+  PubkeyAuthentication: yes
+  Protocol: 2
+  PermitEmptyPasswords: no
+  MaxAuthTries: 3
+  ClientAliveInterval: 300
+  ClientAliveCountMax: 2
+  X11Forwarding: no
+  AllowTcpForwarding: no
+
+# SSH config file path
+ssh_config_path: /etc/ssh/sshd_config
+
+# SSH service name
+ssh_service_name: sshd

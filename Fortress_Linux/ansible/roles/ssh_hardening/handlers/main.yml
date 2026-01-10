@@ -1,0 +1,8 @@
+---
+# Handlers for SSH hardening role
+
+- name: restart sshd
+  systemd:
+    name: "{{ ssh_service_name }}"
+    state: restarted
+  become: yes

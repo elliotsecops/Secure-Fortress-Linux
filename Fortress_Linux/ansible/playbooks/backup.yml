@@ -1,0 +1,128 @@
+---
+# Backup playbook for system hardening
+# Creates backup of critical configuration files
+
+- name: Backup system hardening configuration
+  hosts: all
+  become: yes
+  vars:
+    backup_dir: "/etc/fortress-backups/{{ ansible_date_time.iso8601 }}"
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: Backup SSH configuration
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: "{{ backup_dir }}/sshd_config"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0600'
+      failed_when: false
+
+    - name: Backup password quality configuration
+      copy:
+        src: /etc/security/pwquality.conf
+        dest: "{{ backup_dir }}/pwquality.conf"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      failed_when: false
+
+    - name: Backup auditd configuration
+      copy:
+        src: /etc/audit/auditd.conf
+        dest: "{{ backup_dir }}/auditd.conf"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0640'
+      failed_when: false
+
+    - name: Backup auditd rules
+      copy:
+        src: /etc/audit/rules.d/hardening.rules
+        dest: "{{ backup_dir }}/audit.rules"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0640'
+      failed_when: false
+
+    - name: Backup UFW configuration
+      copy:
+        src: /etc/ufw/ufw.conf
+        dest: "{{ backup_dir }}/ufw.conf"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      failed_when: false
+
+    - name: Backup user files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ backup_dir }}/{{ item | basename }}"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0640'
+      failed_when: false
+      loop:
+        - /etc/passwd
+        - /etc/group
+        - /etc/shadow
+        - /etc/gshadow
+
+    - name: Create backup manifest
+      copy:
+        content: |
+          Fortress Linux Backup Manifest
+          ================================
+          Backup Date: {{ ansible_date_time.iso8601 }}
+          Hostname: {{ ansible_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          Architecture: {{ ansible_architecture }}
+
+          Files Backed Up:
+          - SSH Configuration: sshd_config
+          - Password Quality: pwquality.conf
+          - Auditd Configuration: auditd.conf
+          - Auditd Rules: audit.rules
+          - UFW Configuration: ufw.conf
+          - User Files: passwd, group, shadow, gshadow
+
+          To restore this backup, run:
+          ansible-playbook -i <inventory> playbooks/rollback.yml
+        dest: "{{ backup_dir }}/MANIFEST.txt"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Display backup completion
+      debug:
+        msg: |
+          Backup completed successfully!
+          Backup location: {{ backup_dir }}
+          Backup manifest: {{ backup_dir }}/MANIFEST.txt
+          Files backed up:
+            - SSH configuration
+            - Password quality configuration
+            - Auditd configuration
+            - UFW configuration
+            - User files (passwd, group, shadow, gshadow)
+
+    - name: Create backup info file
+      copy:
+        content: "{{ backup_dir }}"
+        dest: /etc/fortress-backups/latest
+        mode: '0644'

@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  author: Fortress Linux Team
+  description: System hardening role for comprehensive Linux security
+  company: Fortress Linux
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+        - 22.04
+    - name: Debian
+      versions:
+        - 10
+        - 11
+  galaxy_tags:
+    - hardening
+    - security
+    - system
+    - compliance
+    - cis
+    - baseline
+    - ubuntu
+    - debian
+
+dependencies: []

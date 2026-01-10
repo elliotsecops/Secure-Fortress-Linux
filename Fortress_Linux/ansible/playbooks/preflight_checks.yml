@@ -1,0 +1,95 @@
+---
+# Pre-flight checks for system hardening
+# Validates all required variables and system conditions before hardening
+
+- name: Pre-flight validation
+  block:
+    - name: Check if running as root
+      fail:
+        msg: "This playbook must be run with become privilege (sudo/root)"
+      when: ansible_user != 'root' and not ansible_become
+
+    - name: Validate OS distribution
+      fail:
+        msg: "Unsupported OS distribution: {{ ansible_distribution }}. Only Ubuntu 18.04+ and Debian 9+ are supported."
+      when: >
+        ansible_distribution not in ['Ubuntu', 'Debian'] or
+        (ansible_distribution == 'Ubuntu' and ansible_distribution_version is version('18.04', '<'))
+
+    - name: Check available disk space
+      fail:
+        msg: "Insufficient disk space. At least 1GB free space required. Available: {{ ansible_mounts[0].size_available | human_to_bytes | filesizeformat }}"
+      when: ansible_mounts[0].size_available < 1073741824  # 1GB
+
+    - name: Check if Python is available
+      fail:
+        msg: "Python 3.6+ is required but not found"
+      when: ansible_python_version is version('3.6', '<')
+
+    - name: Validate system_hardening_enabled variable
+      fail:
+        msg: "system_hardening_enabled variable must be defined (true or false)"
+      when: system_hardening_enabled is not defined
+
+    - name: Validate firewall_enabled variable
+      fail:
+        msg: "firewall_enabled variable must be defined (true or false)"
+      when: firewall_enabled is not defined
+
+    - name: Validate ssh_hardening_enabled variable
+      fail:
+        msg: "ssh_hardening_enabled variable must be defined (true or false)"
+      when: ssh_hardening_enabled is not defined
+
+    - name: Validate auditd_enabled variable
+      fail:
+        msg: "auditd_enabled variable must be defined (true or false)"
+      when: auditd_enabled is not defined
+
+    - name: Validate system_hardening_security_packages variable
+      fail:
+        msg: "system_hardening_security_packages variable must be a list of package names"
+      when: system_hardening_security_packages is not defined or system_hardening_security_packages is not iterable
+
+    - name: Validate system_hardening_login_defs variable
+      fail:
+        msg: "system_hardening_login_defs variable must be a dictionary"
+      when: system_hardening_login_defs is not defined or system_hardening_login_defs is not mapping
+
+    - name: Validate system_hardening_file_permissions variable
+      fail:
+        msg: "system_hardening_file_permissions variable must be a list of dictionaries with 'path' and 'mode' keys"
+      when: system_hardening_file_permissions is not defined
+
+    - name: Check Wazuh manager IP if enabled
+      fail:
+        msg: "wazuh_manager_ip must be defined when monitoring is enabled"
+      when: >
+        (monitoring_enabled is defined and monitoring_enabled | bool) and
+        (wazuh_manager_ip is not defined or wazuh_manager_ip == '')
+
+    - name: Verify SSH access before hardening
+      fail:
+        msg: "WARNING: SSH password authentication will be disabled. Ensure you have SSH key access!"
+      when: ssh_hardening_enabled and ssh_password_authentication is defined and ssh_password_authentication == false
+
+    - name: Display pre-flight check results
+      debug:
+        msg: |
+          Pre-flight validation passed:
+          - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Python: {{ ansible_python_version }}
+          - Free disk space: {{ ansible_mounts[0].size_available | human_to_bytes | filesizeformat }}
+          - Hardening enabled: {{ system_hardening_enabled | default(false) }}
+          - Firewall enabled: {{ firewall_enabled | default(false) }}
+          - SSH hardening enabled: {{ ssh_hardening_enabled | default(false) }}
+          - Auditd enabled: {{ auditd_enabled | default(false) }}
+
+  rescue:
+    - name: Display pre-flight check failure
+      debug:
+        msg: "Pre-flight check failed: {{ ansible_failed_result.msg }}"
+
+    - name: Exit with error
+      fail:
+        msg: "Pre-flight validation failed. Please resolve the issues above before proceeding."
