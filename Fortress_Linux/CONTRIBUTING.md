@@ -93,26 +93,56 @@ All contributions must follow security best practices:
 ## 🧪 Testing Requirements
 
 ### Before Submitting
+
 1. **Test in Development Environment**
    ```bash
    # Syntax check for bash scripts
    bash -n scripts/linux_hardening.sh
+   bash -n scripts/backup_restore.sh
+   bash -n scripts/system_check.sh
+   bash -n scripts/ux_core.sh
+   bash -n scripts/test_ux.sh
 
    # Syntax check for Ansible playbooks
    ansible-playbook --syntax-check playbooks/playbook_hardening.yml
+   ansible-lint playbooks/
    ```
 
-2. **Test Functionality**
+2. **Test UX Functionality**
+   ```bash
+   # Test all UX functions
+   ./scripts/test_ux.sh
+
+   # This validates:
+   #   - Progress bars rendering correctly
+   #   - Spinners animating properly
+   #   - Step counters displaying
+   #   - Verification tables formatting
+   #   - Error messages showing with fixes
+   #   - Headers, sections, and dividers
+   #   - Confirmation system
+   #   - Dry-run mode
+   #   - Auto-confirm detection
+   ```
+
+3. **Test Functionality**
    - Run scripts in a test VM or container
    - Verify all security hardening measures work as expected
    - Test rollback procedures
    - Ensure no breaking changes to existing functionality
 
-3. **Security Testing**
+4. **Security Testing**
    - Review code for security vulnerabilities
    - Test with various user permission levels
    - Verify file permissions and access controls
    - Test error handling scenarios
+
+5. **Compatibility Testing**
+   - Test on different terminal types (gnome-terminal, tmux, etc.)
+   - Test with different shell environments (bash, sh)
+   - Test in CI/CD environments (non-TTY)
+   - Test with different terminal widths
+   - Test color output and NO_COLOR environment variable
 
 ### Test Environment Setup
 ```bash

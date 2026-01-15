@@ -172,15 +172,44 @@ ansible-playbook -i ansible/inventory/production.ini \
 
 ### Deploy Hardening
 ```bash
-# Execute hardening playbook
-ansible-playbook -i ansible/inventory/production.ini \
-    ansible/playbooks/playbook_hardening.yml
-
-# Run with extra variables
+# Execute hardening playbook with UX options
 ansible-playbook -i ansible/inventory/production.ini \
     ansible/playbooks/playbook_hardening.yml \
     -e "system_hardening_enabled=true"
-    -e "firewall_enabled=true"
+
+# Run with extra variables and verbose output
+ansible-playbook -i ansible/inventory/production.ini \
+    ansible/playbooks/playbook_hardening.yml \
+    -e "system_hardening_enabled=true"
+    -e "firewall_enabled=true" \
+    -v
+```
+
+### Enhanced Bash Script Deployment with UX Options
+```bash
+# Standard hardening with full UX features
+sudo bash scripts/linux_hardening.sh
+
+# With progress tracking and confirmations
+sudo bash scripts/linux_hardening.sh --verbose
+
+# Quiet mode for automation (errors only)
+sudo bash scripts/linux_hardening.sh --quiet
+
+# Auto-confirm for CI/CD (skip all confirmations)
+sudo bash scripts/linux_hardening.sh --yes --quiet
+
+# Dry-run to preview changes
+sudo bash scripts/linux_hardening.sh --dry-run
+
+# Debug mode for troubleshooting
+sudo bash scripts/linux_hardening.sh --debug
+
+# Minimal mode for resource-constrained systems
+sudo bash scripts/linux_hardening.sh --minimal
+
+# Combined options for advanced usage
+sudo bash scripts/linux_hardening.sh --yes --verbose --backup-skip
 ```
 
 ### Post-deployment Verification
@@ -358,6 +387,87 @@ ansible-playbook -i ansible/inventory/production.ini \
 ```
 
 ## Advanced Topics
+
+### Terminal UX Options
+
+Fortress Linux v2.1+ includes enhanced terminal UX for optimal user experience.
+
+#### Verbosity Control
+```bash
+# Quiet mode (errors only)
+sudo bash scripts/linux_hardening.sh --quiet
+sudo bash scripts/linux_hardening.sh -q
+
+# Verbose mode (detailed output)
+sudo bash scripts/linux_hardening.sh --verbose
+sudo bash scripts/linux_hardening.sh -v
+
+# Debug mode (very detailed)
+sudo bash scripts/linux_hardening.sh --debug
+sudo bash scripts/linux_hardening.sh -vv
+```
+
+#### Safety Features
+```bash
+# Dry-run mode (preview changes without making them)
+sudo bash scripts/linux_hardening.sh --dry-run
+
+# Auto-confirm mode (skip all confirmations, use with caution!)
+sudo bash scripts/linux_hardening.sh --yes
+sudo bash scripts/linux_hardening.sh -y
+
+# Combined for automation
+sudo bash scripts/linux_hardening.sh --yes --quiet
+```
+
+#### Progress Indicators
+The hardening script now provides:
+- **Step counters**: Shows current step (e.g., [3/11])
+- **Time estimates**: Predicted duration for each operation
+- **Progress bars**: Visual progress for multi-item operations
+- **Animated spinners**: Real-time feedback for long operations
+- **Verification tables**: Compact status summary at completion
+
+#### Testing UX
+```bash
+# Test all UX functions
+./scripts/test_ux.sh
+
+# This validates:
+#   ✓ Progress bars rendering
+#   ✓ Spinners animating
+#   ✓ Step counters displaying
+#   ✓ Verification tables formatting
+#   ✓ Error messages with fix suggestions
+#   ✓ Headers, sections, and dividers
+#   ✓ Confirmation system
+#   ✓ Dry-run mode
+#   ✓ Auto-confirm detection
+```
+
+#### Error Recovery
+When errors occur, the script provides:
+- **Contextual error messages**: Clear description of what failed
+- **Fix suggestions**: Commands to resolve common issues
+- **Recovery menu**: Options to retry, skip, show details, or abort
+
+Example:
+```bash
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+❌ UFW configuration failed
+
+💡 Possible fix:
+   sudo ufw --force reset && sudo ufw enable
+
+📄 Log: /var/log/fortress-hardening.log:45
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Recovery options:
+  1) Retry operation
+  2) Skip and continue
+  3) Show error details
+  4) Abort and exit
+```
 
 ### Rolling Updates
 ```bash
