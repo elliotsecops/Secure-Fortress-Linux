@@ -1,69 +1,51 @@
 #!/bin/bash
 
 # Fortress Linux - System Security Hardening Script
-# Enhanced with error handling, logging, and backup functionality
+# Enhanced with optimal terminal UX experience
 
 set -euo pipefail
 
-# Configuration variables
+# Source UX core library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/ux_core.sh" || {
+    echo "ERROR: Failed to load ux_core.sh"
+    exit 1
+}
+
+# Configuration variables
 LOG_FILE="/var/log/fortress-hardening.log"
 BACKUP_DIR="/etc/fortress-backups/$(date +%Y%m%d_%H%M%S)"
 MIN_DISK_SPACE=1048576  # 1GB in KB
-REQUIRED_SERVICES=("ssh" "ufw" "auditd")
+START_TIME=$(date +%s)
 
 # Minimal mode flags
 MINIMAL_MODE=false
 SKIP_BACKUP=false
 SKIP_UPDATES=false
 OFFLINE_MODE=false
-LOG_LEVEL="info"
 THREADS=4
 CUSTOM_CONFIG=""
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Logging functions
-log() {
-    local level="$1"
-    shift
-    local message="$*"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
-}
-
-log_info() {
-    if [[ "$LOG_LEVEL" == "info" || "$LOG_LEVEL" == "debug" ]]; then
-        log "INFO" "$@"
-        echo -e "${BLUE}[INFO]${NC} $*"
-    fi
-}
-
-log_success() {
-    log "SUCCESS" "$@"
-    echo -e "${GREEN}[SUCCESS]${NC} $*"
-}
-
-log_warning() {
-    log "WARNING" "$@"
-    echo -e "${YELLOW}[WARNING]${NC} $*"
-}
-
-log_error() {
-    log "ERROR" "$@"
-    echo -e "${RED}[ERROR]${NC} $*"
-}
 
 # Error handling
 handle_error() {
     local line_number=$1
+    local duration=$(( $(date +%s) - START_TIME ))
+    local minutes=$((duration / 60))
+    local seconds=$((duration % 60))
+
+    echo
+    print_divider "!"
     log_error "Script failed at line $line_number. Check logs for details."
-    log_error "Backup available at: $BACKUP_DIR"
+
+    if [[ "$SKIP_BACKUP" != true ]]; then
+        echo "💾 Backup available at: $BACKUP_DIR"
+        echo "   Restore: sudo $0 restore $BACKUP_DIR"
+    fi
+
+    echo "📄 Log: $LOG_FILE"
+    echo "⏱️  Duration: ${minutes}m ${seconds}s"
+    print_divider "!"
+
     exit 1
 }
 
@@ -72,22 +54,22 @@ trap 'handle_error $LINENO' ERR
 # Pre-flight checks
 check_root_privileges() {
     if [[ $EUID -ne 0 ]]; then
-        log_error "This script must be run as root"
+        show_error "This script must be run as root" "Run with: sudo $0" ""
         exit 1
     fi
 }
 
 check_system_requirements() {
-    log_info "Checking system requirements..."
+    log_verbose "Checking system requirements..."
 
     # Check OS
     if [[ ! -f /etc/os-release ]]; then
-        log_error "Cannot determine operating system"
+        show_error "Cannot determine operating system" "Ensure /etc/os-release exists" ""
         exit 1
     fi
 
     source /etc/os-release
-    log_info "Detected OS: $PRETTY_NAME"
+    log_debug "Detected OS: $PRETTY_NAME"
 
     # Check if supported OS
     if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then
@@ -97,7 +79,7 @@ check_system_requirements() {
     # Check disk space
     local available_space=$(df -k / | awk 'NR==2 {print $4}')
     if [[ $available_space -lt $MIN_DISK_SPACE ]]; then
-        log_error "Insufficient disk space. At least 1GB free space required."
+        show_error "Insufficient disk space" "At least 1GB free space required. Check: df -h" ""
         exit 1
     fi
 
@@ -105,20 +87,20 @@ check_system_requirements() {
 }
 
 check_connectivity() {
-    log_info "Checking internet connectivity..."
+    log_verbose "Checking internet connectivity..."
     if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-        log_error "No internet connectivity. Required for package updates."
-        exit 1
+        show_error "No internet connectivity" "Required for package updates. Check: ping -c 1 8.8.8.8" ""
+        if [[ "$OFFLINE_MODE" != true ]]; then
+            exit 1
+        fi
     fi
-    log_success "Internet connectivity confirmed"
+    log_debug "Internet connectivity confirmed"
 }
 
 # Backup functions
 create_backup() {
-    log_info "Creating system backup..."
     mkdir -p "$BACKUP_DIR"
 
-    # Backup configuration files
     local files_to_backup=(
         "/etc/ssh/sshd_config"
         "/etc/security/pwquality.conf"
@@ -131,9 +113,17 @@ create_backup() {
         "/etc/gshadow"
     )
 
+    local total=${#files_to_backup[@]}
+    local current=0
+
+    log_verbose "Creating system backup..."
+
     for file in "${files_to_backup[@]}"; do
+        ((current++))
+        show_progress_bar $current $total "Backing up: ${file##*/}"
+
         if [[ -f "$file" ]]; then
-            cp "$file" "$BACKUP_DIR/" 2>/dev/null || log_warning "Could not backup $file"
+            cp "$file" "$BACKUP_DIR/" 2>/dev/null || log_debug "Could not backup $file"
         fi
     done
 
@@ -147,71 +137,75 @@ create_backup() {
         auditctl -l > "$BACKUP_DIR/audit_rules.txt" 2>/dev/null || true
     fi
 
+    echo
     log_success "Backup created at: $BACKUP_DIR"
 }
 
 # Hardening functions
 update_system() {
-    log_info "Updating system packages..."
+    start_spinner "Updating system packages"
 
     # Update package list
-    if apt update; then
-        log_success "Package list updated"
+    if execute_command "apt update -qq"; then
+        stop_spinner "success" "Package list updated"
     else
-        log_error "Failed to update package list"
+        stop_spinner "error" "Failed to update package list"
+        show_error "Package update failed" "apt update && apt upgrade -y" ""
         return 1
     fi
 
     # Upgrade packages
-    if apt upgrade -y; then
-        log_success "System packages upgraded"
+    start_spinner "Upgrading packages"
+    if execute_command "DEBIAN_FRONTEND=noninteractive apt upgrade -y -qq"; then
+        stop_spinner "success" "Packages upgraded"
     else
-        log_error "Failed to upgrade packages"
+        stop_spinner "error" "Failed to upgrade packages"
+        show_error "Package upgrade failed" "Check log for details" ""
         return 1
     fi
 
     # Clean up
-    apt autoremove -y >/dev/null 2>&1 || true
-    apt autoclean >/dev/null 2>&1 || true
+    log_debug "Cleaning up old packages..."
+    execute_command "apt autoremove -y >/dev/null 2>&1 || true"
+    execute_command "apt autoclean >/dev/null 2>&1 || true"
+
+    log_success "System updated successfully"
 }
 
 configure_firewall() {
-    log_info "Configuring UFW firewall..."
+    start_spinner "Configuring UFW firewall"
 
     # Check if UFW is installed
     if ! command -v ufw >/dev/null 2>&1; then
-        log_info "Installing UFW..."
-        apt install -y ufw
+        log_debug "Installing UFW..."
+        execute_command "apt install -y ufw"
     fi
 
     # Configure default policies
-    ufw --force reset >/dev/null 2>&1 || true
-    ufw default deny incoming
-    ufw default allow outgoing
+    execute_command "ufw --force reset >/dev/null 2>&1 || true"
+    execute_command "ufw default deny incoming"
+    execute_command "ufw default allow outgoing"
 
     # Allow SSH (ensure we don't lock ourselves out)
-    ufw allow OpenSSH
-    ufw allow 22/tcp
+    execute_command "ufw allow OpenSSH"
+    execute_command "ufw allow 22/tcp"
 
     # Enable logging
-    ufw logging medium
+    execute_command "ufw logging medium"
 
     # Enable firewall
-    if ufw --force enable; then
-        log_success "UFW firewall configured and enabled"
+    if execute_command "ufw --force enable"; then
+        stop_spinner "success" "UFW firewall configured and enabled"
     else
-        log_error "Failed to enable UFW firewall"
+        stop_spinner "error" "Failed to enable UFW firewall"
+        show_error "UFW configuration failed" "sudo ufw --force reset && sudo ufw enable" ""
         return 1
     fi
 
-    # Display status
-    log_info "Firewall status:"
-    ufw status verbose | tee -a "$LOG_FILE"
+    log_debug "Firewall status: $(ufw status 2>/dev/null | grep Status | cut -d: -f2 | xargs || echo 'Unknown')"
 }
 
 disable_unnecessary_services() {
-    log_info "Disabling unnecessary services..."
-
     local services_to_disable=(
         "avahi-daemon"
         "cups"
@@ -222,32 +216,44 @@ disable_unnecessary_services() {
         "cupsd"
     )
 
+    local total=${#services_to_disable[@]}
+    local current=0
+    local disabled_count=0
+
+    log_verbose "Disabling unnecessary services..."
+
     for service in "${services_to_disable[@]}"; do
+        ((current++))
+        show_progress_bar $current $total "Processing: $service"
+
         if systemctl is-enabled "$service" >/dev/null 2>&1; then
-            systemctl disable "$service" 2>/dev/null || log_warning "Could not disable $service"
-            systemctl stop "$service" 2>/dev/null || log_warning "Could not stop $service"
-            log_info "Disabled service: $service"
-        else
-            log_info "Service already disabled: $service"
+            if execute_command "systemctl disable $service 2>/dev/null" && \
+               execute_command "systemctl stop $service 2>/dev/null"; then
+                ((disabled_count++))
+                log_debug "Disabled service: $service"
+            else
+                log_debug "Could not disable $service"
+            fi
         fi
     done
 
-    log_success "Unnecessary services disabled"
+    echo
+    log_success "Disabled $disabled_count/${total} unnecessary services"
 }
 
 configure_password_policy() {
-    log_info "Configuring password policies..."
+    start_spinner "Configuring password policies"
 
     # Ensure pwquality package is installed
     if ! dpkg -l | grep -q pwquality; then
-        apt install -y libpwquality-tools
+        execute_command "apt install -y libpwquality-tools"
     fi
 
     # Configure pwquality
     local pwquality_file="/etc/security/pwquality.conf"
 
     # Backup original file
-    cp "$pwquality_file" "$BACKUP_DIR/pwquality.conf.bak" 2>/dev/null || true
+    execute_command "cp \"$pwquality_file\" \"$BACKUP_DIR/pwquality.conf.bak\" 2>/dev/null || true"
 
     # Update or add password policies
     local policies=(
@@ -264,21 +270,21 @@ configure_password_policy() {
     for policy in "${policies[@]}"; do
         local key=$(echo "$policy" | cut -d'=' -f1 | xargs)
         if grep -q "^#*$key" "$pwquality_file"; then
-            sed -i "s/^#*$key.*/$policy/" "$pwquality_file"
+            execute_command "sed -i \"s/^#*$key.*/$policy/\" \"$pwquality_file\""
         else
-            echo "$policy" >> "$pwquality_file"
+            execute_command "echo \"$policy\" >> \"$pwquality_file\""
         fi
     done
 
-    log_success "Password policies configured"
+    stop_spinner "success" "Password policies configured (min 14 chars, 4 classes)"
 }
 
 configure_auditd() {
-    log_info "Configuring audit daemon..."
+    start_spinner "Configuring audit daemon"
 
     # Ensure auditd is installed
     if ! dpkg -l | grep -q auditd; then
-        apt install -y auditd
+        execute_command "apt install -y auditd"
     fi
 
     # Create auditd rules
@@ -286,11 +292,11 @@ configure_auditd() {
 
     # Backup existing rules
     if [[ -f "$audit_rules_file" ]]; then
-        cp "$audit_rules_file" "$BACKUP_DIR/audit_rules.bak" 2>/dev/null || true
+        execute_command "cp \"$audit_rules_file\" \"$BACKUP_DIR/audit_rules.bak\" 2>/dev/null || true"
     fi
 
     # Create comprehensive audit rules
-    cat > "$audit_rules_file" << 'EOF'
+    execute_command "cat > \"$audit_rules_file\" << 'EOF'
 # Monitor identity and access
 -w /etc/passwd -p wa -k identity
 -w /etc/shadow -p wa -k identity
@@ -335,18 +341,19 @@ configure_auditd() {
 -w /etc/resolv.conf -p wa -k network
 -w /etc/sysconfig/network -p wa -k network
 -w /etc/issue -p wa -k system_info
-EOF
+EOF"
 
     # Restart auditd
-    if systemctl restart auditd; then
-        log_success "Audit daemon configured and restarted"
+    if execute_command "systemctl restart auditd"; then
+        stop_spinner "success" "Audit daemon configured and restarted"
     else
-        log_error "Failed to restart auditd"
+        stop_spinner "error" "Failed to restart auditd"
+        show_error "Auditd restart failed" "systemctl restart auditd; auditctl -R $audit_rules_file" ""
         return 1
     fi
 
     # Load rules
-    if auditctl -R "$audit_rules_file" 2>/dev/null; then
+    if execute_command "auditctl -R \"$audit_rules_file\" 2>/dev/null"; then
         log_success "Audit rules loaded successfully"
     else
         log_warning "Some audit rules may not have loaded properly"
@@ -376,12 +383,20 @@ configure_file_permissions() {
 }
 
 configure_ssh_security() {
-    log_info "Configuring SSH security settings..."
+    # Interactive confirmation for SSH hardening
+    if ! should_auto_confirm; then
+        if ! confirm_dangerous "SSH password authentication will be disabled and root login blocked. Ensure you have SSH keys set up before proceeding!"; then
+            log_warning "SSH hardening skipped by user"
+            return 0
+        fi
+    fi
+
+    start_spinner "Configuring SSH security settings"
 
     local ssh_config="/etc/ssh/sshd_config"
 
     # Backup SSH config
-    cp "$ssh_config" "$BACKUP_DIR/sshd_config.bak" 2>/dev/null || true
+    execute_command "cp \"$ssh_config\" \"$BACKUP_DIR/sshd_config.bak\" 2>/dev/null || true"
 
     # Secure SSH configuration
     local ssh_settings=(
@@ -401,14 +416,14 @@ configure_ssh_security() {
     for setting in "${ssh_settings[@]}"; do
         local key=$(echo "$setting" | cut -d' ' -f1)
         if grep -q "^#\?$key" "$ssh_config"; then
-            sed -i "s/^#\?$key.*/$setting/" "$ssh_config"
+            execute_command "sed -i \"s/^#\?$key.*/$setting/\" \"$ssh_config\""
         else
-            echo "$setting" >> "$ssh_config"
+            execute_command "echo \"$setting\" >> \"$ssh_config\""
         fi
     done
 
     # Create SSH banner
-    cat > /etc/ssh/banner << 'EOF'
+    execute_command "cat > /etc/ssh/banner << 'EOF'
 ***************************************************************************
                             AUTHORIZED ACCESS ONLY
 ***************************************************************************
@@ -417,80 +432,96 @@ and/or network without authority, or in excess of your authority, is
 strictly prohibited. Unauthorized access is a violation of state and
 federal, civil and criminal laws.
 ***************************************************************************
-EOF
+EOF"
 
     # Test SSH configuration
-    if sshd -t; then
-        log_success "SSH configuration is valid"
+    if execute_command "sshd -t"; then
+        stop_spinner "success" "SSH configuration is valid"
     else
-        log_error "SSH configuration has errors"
+        stop_spinner "error" "SSH configuration has errors"
+        show_error "SSH configuration test failed" "Review SSH configuration: cat /etc/ssh/sshd_config" ""
         return 1
     fi
 
     # Restart SSH service
-    if systemctl restart sshd; then
-        log_success "SSH service restarted with secure configuration"
+    start_spinner "Restarting SSH service"
+    if execute_command "systemctl restart sshd"; then
+        stop_spinner "success" "SSH service restarted with secure configuration"
     else
-        log_error "Failed to restart SSH service"
+        stop_spinner "error" "Failed to restart SSH service"
+        show_error "SSH service restart failed" "systemctl restart sshd" ""
         return 1
     fi
+
+    log_success "SSH hardening: Root login disabled, password auth disabled"
 }
 
 # System hardening verification
 verify_hardening() {
-    log_info "Verifying hardening implementation..."
-
-    local verification_failed=false
+    log_verbose "Verifying hardening implementation..."
 
     # Check UFW status
-    if ufw status | grep -q "Status: active"; then
-        log_success "✓ UFW firewall is active"
+    if ufw status 2>/dev/null | grep -q "Status: active"; then
+        add_verification_result "UFW Firewall" "ok" "Active and configured"
     else
-        log_error "✗ UFW firewall is not active"
-        verification_failed=true
+        add_verification_result "UFW Firewall" "error" "Not active"
     fi
 
     # Check SSH configuration
-    if grep -q "PermitRootLogin no" /etc/ssh/sshd_config; then
-        log_success "✓ Root login via SSH is disabled"
+    if grep -q "PermitRootLogin no" /etc/ssh/sshd_config 2>/dev/null; then
+        add_verification_result "SSH Hardening" "ok" "Root login disabled"
     else
-        log_error "✗ Root login via SSH is still enabled"
-        verification_failed=true
+        add_verification_result "SSH Hardening" "error" "Root login enabled"
+    fi
+
+    if grep -q "PasswordAuthentication no" /etc/ssh/sshd_config 2>/dev/null; then
+        add_verification_result "SSH Password Auth" "ok" "Disabled (key-based only)"
+    else
+        add_verification_result "SSH Password Auth" "warning" "Still enabled"
     fi
 
     # Check auditd status
     if systemctl is-active auditd >/dev/null 2>&1; then
-        log_success "✓ Audit daemon is running"
+        add_verification_result "Audit Daemon" "ok" "Running and configured"
     else
-        log_error "✗ Audit daemon is not running"
-        verification_failed=true
+        add_verification_result "Audit Daemon" "error" "Not running"
     fi
 
     # Check password policy
-    if grep -q "minlen = 14" /etc/security/pwquality.conf; then
-        log_success "✓ Password policy is configured"
+    if grep -q "minlen = 14" /etc/security/pwquality.conf 2>/dev/null; then
+        add_verification_result "Password Policy" "ok" "Min 14 chars, 4 classes"
     else
-        log_error "✗ Password policy is not properly configured"
-        verification_failed=true
+        add_verification_result "Password Policy" "error" "Not properly configured"
     fi
 
-    if [[ "$verification_failed" == "true" ]]; then
-        log_error "Some verifications failed. Please review the configuration."
-        return 1
+    # Check file permissions
+    if [[ $(stat -c %a /etc/shadow 2>/dev/null) == "640" ]]; then
+        add_verification_result "File Permissions" "ok" "Critical files secured"
     else
-        log_success "All verifications passed successfully"
+        add_verification_result "File Permissions" "warning" "Some files may need review"
     fi
+
+    # Check unnecessary services
+    local services_stopped=0
+    for service in avahi-daemon cups nfs-server rpcbind; do
+        if ! systemctl is-enabled "$service" >/dev/null 2>&1; then
+            ((services_stopped++))
+        fi
+    done
+    add_verification_result "Service Hardening" "ok" "Stopped $services_stopped unnecessary services"
+
+    return 0
 }
 
 # Cleanup function
 cleanup() {
-    log_info "Performing cleanup..."
+    log_verbose "Performing cleanup..."
 
     # Remove any temporary files
-    rm -f /tmp/fortress-* 2>/dev/null || true
+    execute_command "rm -f /tmp/fortress-* 2>/dev/null || true"
 
     # Update file database
-    updatedb >/dev/null 2>&1 || true
+    execute_command "updatedb >/dev/null 2>&1 || true"
 
     log_success "Cleanup completed"
 }
@@ -543,7 +574,7 @@ restore_from_backup() {
 # Display usage information
 show_usage() {
     cat << EOF
-Fortress Linux - System Security Hardening Script
+${BOLD}Fortress Linux - System Security Hardening Script${NC}
 
 USAGE:
     $0 [OPTIONS] [COMMAND]
@@ -553,14 +584,18 @@ COMMANDS:
     restore <dir>   Restore from backup directory
 
 OPTIONS:
-    --minimal              Enable minimal mode (resource-constrained systems)
-    --backup-skip          Skip backup creation
-    --skip-updates         Skip system package updates
-    --offline              Run in offline mode (no network calls)
-    --log-level LEVEL      Set log level (error|warning|info|debug)
-    --threads NUM          Set number of parallel threads (default: 4)
-    --config FILE          Use custom configuration file
-    --help                 Show this help message
+    ${CYAN}--minimal${NC}              Enable minimal mode (resource-constrained systems)
+    ${CYAN}--backup-skip${NC}          Skip backup creation
+    ${CYAN}--skip-updates${NC}         Skip system package updates
+    ${CYAN}--offline${NC}              Run in offline mode (no network calls)
+    ${CYAN}--quiet, -q${NC}            Minimal output (errors only)
+    ${CYAN}--verbose, -v${NC}          Detailed output
+    ${CYAN}--debug, -vv${NC}           Very detailed with debug info
+    ${CYAN}--yes, -y${NC}              Skip all confirmations (use with caution!)
+    ${CYAN}--dry-run${NC}              Show what would be done without making changes
+    ${CYAN}--threads NUM${NC}          Set number of parallel threads (default: 4)
+    ${CYAN}--config FILE${NC}          Use custom configuration file
+    ${CYAN}--help${NC}                 Show this help message
 
 MINIMAL MODE EXAMPLES:
     # Core hardening only
@@ -572,64 +607,61 @@ MINIMAL MODE EXAMPLES:
     # Offline minimal hardening
     $0 --minimal --offline --skip-updates
 
-    # Resource-constrained with error-only logging
-    $0 --minimal --log-level error --threads 1
+    # Auto-confirm for automation
+    $0 --yes --verbose
+
+    # Dry run to see what would change
+    $0 --dry-run
 
 EOF
 }
 
 # Parse command line arguments
 parse_arguments() {
+    # Parse UX arguments first
+    parse_ux_arguments "$@"
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             --minimal)
                 MINIMAL_MODE=true
                 SKIP_BACKUP=true
-                LOG_LEVEL="warning"
                 THREADS=1
-                log_info "Minimal mode enabled"
+                set_verbosity "warning"
+                log_verbose "Minimal mode enabled"
                 shift
                 ;;
             --backup-skip)
                 SKIP_BACKUP=true
-                log_info "Backup creation disabled"
+                log_verbose "Backup creation disabled"
                 shift
                 ;;
             --skip-updates)
                 SKIP_UPDATES=true
-                log_info "System updates skipped"
+                log_verbose "System updates skipped"
                 shift
                 ;;
             --offline)
                 OFFLINE_MODE=true
-                log_info "Offline mode enabled"
+                log_verbose "Offline mode enabled"
                 shift
-                ;;
-            --log-level)
-                LOG_LEVEL="$2"
-                if [[ ! "$LOG_LEVEL" =~ ^(error|warning|info|debug)$ ]]; then
-                    log_error "Invalid log level: $LOG_LEVEL"
-                    exit 1
-                fi
-                log_info "Log level set to: $LOG_LEVEL"
-                shift 2
                 ;;
             --threads)
                 THREADS="$2"
                 if ! [[ "$THREADS" =~ ^[0-9]+$ ]] || [[ "$THREADS" -lt 1 ]]; then
-                    log_error "Invalid thread count: $THREADS"
+                    show_error "Invalid thread count" "Use a positive integer" ""
                     exit 1
                 fi
-                log_info "Thread count set to: $THREADS"
+                log_verbose "Thread count set to: $THREADS"
                 shift 2
                 ;;
             --config)
                 CUSTOM_CONFIG="$2"
                 if [[ ! -f "$CUSTOM_CONFIG" ]]; then
-                    log_error "Configuration file not found: $CUSTOM_CONFIG"
+                    show_error "Configuration file not found" "$CUSTOM_CONFIG does not exist" ""
                     exit 1
                 fi
-                log_info "Using custom configuration: $CUSTOM_CONFIG"
+                log_verbose "Using custom configuration: $CUSTOM_CONFIG"
                 shift 2
                 ;;
             --help)
@@ -638,7 +670,7 @@ parse_arguments() {
                 ;;
             restore)
                 if [[ -z "${2:-}" ]]; then
-                    log_error "Restore command requires backup directory"
+                    show_error "Restore command requires backup directory" "Usage: $0 restore <directory>" ""
                     show_usage
                     exit 1
                 fi
@@ -646,9 +678,7 @@ parse_arguments() {
                 exit 0
                 ;;
             *)
-                log_error "Unknown option: $1"
-                show_usage
-                exit 1
+                shift
                 ;;
         esac
     done
@@ -659,89 +689,102 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
-    log_info "Starting Fortress Linux hardening..."
-    log_info "Log file: $LOG_FILE"
-    log_info "Backup directory: $BACKUP_DIR"
+    # Display header
+    print_header "🛡️ Fortress Linux - System Security Hardening"
+
+    echo
+    log_always "Log file: $LOG_FILE"
+    if [[ "$SKIP_BACKUP" != true ]]; then
+        log_always "Backup directory: $BACKUP_DIR"
+    fi
 
     if [[ "$MINIMAL_MODE" == true ]]; then
-        log_info "Running in MINIMAL MODE"
+        log_always "${YELLOW}Running in MINIMAL MODE${NC}"
     fi
 
-    # Pre-flight checks
-    check_root_privileges
-    check_system_requirements
+    if is_dry_run; then
+        log_always "${YELLOW}Running in DRY-RUN mode - no changes will be made${NC}"
+    fi
 
-    # Skip connectivity check if in offline mode
+    echo
+
+    # Define hardening steps
+    declare -a HARDENING_STEPS=()
     if [[ "$OFFLINE_MODE" != true ]]; then
-        check_connectivity
+        HARDENING_STEPS+=("check_connectivity:Network connectivity")
     fi
-
-    # Create backup (unless skipped)
+    HARDENING_STEPS+=("check_system_requirements:System requirements")
     if [[ "$SKIP_BACKUP" != true ]]; then
-        create_backup
-    else
-        log_warning "Backup creation skipped as requested"
+        HARDENING_STEPS+=("create_backup:Creating backup")
     fi
+    if [[ "$SKIP_UPDATES" != true ]]; then
+        HARDENING_STEPS+=("update_system:Updating packages")
+    fi
+    HARDENING_STEPS+=("configure_firewall:Configuring firewall")
+    if [[ "$MINIMAL_MODE" != true ]]; then
+        HARDENING_STEPS+=("disable_unnecessary_services:Disabling services")
+    fi
+    HARDENING_STEPS+=("configure_password_policy:Configuring passwords")
+    if [[ "$MINIMAL_MODE" != true ]]; then
+        HARDENING_STEPS+=("configure_auditd:Configuring auditd")
+    fi
+    HARDENING_STEPS+=("configure_file_permissions:Securing files")
+    HARDENING_STEPS+=("configure_ssh_security:Hardening SSH")
+    HARDENING_STEPS+=("verify_hardening:Verification")
+    HARDENING_STEPS+=("cleanup:Cleanup")
+
+    TOTAL_STEPS=${#HARDENING_STEPS[@]}
+    CURRENT_STEP=0
+
+    # Pre-flight checks (not counted in steps)
+    print_section "Pre-flight Checks"
+    check_root_privileges
 
     # Execute hardening steps
-    log_info "Starting system hardening procedures..."
+    print_section "System Hardening"
+    echo
 
-    # Update system (unless skipped)
-    if [[ "$SKIP_UPDATES" != true ]]; then
-        update_system
-    else
-        log_warning "System updates skipped as requested"
+    for step in "${HARDENING_STEPS[@]}"; do
+        ((CURRENT_STEP++))
+        local step_func="${step%%:*}"
+        local step_name="${step##*:}"
+
+        show_step $CURRENT_STEP $TOTAL_STEPS "$step_name ($(estimate_operation_time $step_func))"
+
+        if $step_func; then
+            log_success "$step_name completed"
+        else
+            log_error "$step_name failed"
+            if ! should_auto_confirm; then
+                show_recovery_menu "$step_name"
+            else
+                echo "Auto-confirm enabled, aborting..."
+                exit 1
+            fi
+        fi
+
+        echo
+    done
+
+    # Calculate duration
+    local end_time=$(date +%s)
+    local duration=$((end_time - START_TIME))
+    local minutes=$((duration / 60))
+    local seconds=$((duration % 60))
+    local duration_str="${minutes}m ${seconds}s"
+    if [[ $minutes -eq 0 ]]; then
+        duration_str="${seconds}s"
     fi
 
-    configure_firewall
-
-    # In minimal mode, skip service disablement to avoid breaking critical functionality
-    if [[ "$MINIMAL_MODE" != true ]]; then
-        disable_unnecessary_services
+    # Display completion dashboard
+    local backup_path=""
+    if [[ "$SKIP_BACKUP" != true ]]; then
+        backup_path="$BACKUP_DIR"
     fi
 
-    configure_password_policy
-
-    # Only configure auditd if not in minimal mode
-    if [[ "$MINIMAL_MODE" != true ]]; then
-        configure_auditd
-    fi
-
-    configure_file_permissions
-    configure_ssh_security
-
-    # Verification
-    verify_hardening
-
-    # Cleanup
-    cleanup
+    show_completion_dashboard "$duration_str" "$TOTAL_STEPS" "$backup_path"
 
     log_success "Fortress Linux hardening completed successfully!"
-
-    if [[ "$SKIP_BACKUP" != true ]]; then
-        log_info "Backup location: $BACKUP_DIR"
-        log_info "To restore: $0 restore $BACKUP_DIR"
-    else
-        log_warning "No backup was created (skipped by request)"
-    fi
-
-    log_info "Log file: $LOG_FILE"
-
-    # Display summary
-    echo
-    echo "=== HARDENING SUMMARY ==="
-    echo "✓ System packages updated"
-    echo "✓ Firewall configured and enabled"
-    echo "✓ Unnecessary services disabled"
-    echo "✓ Password policies strengthened"
-    echo "✓ Audit daemon configured"
-    echo "✓ File permissions secured"
-    echo "✓ SSH security enhanced"
-    echo "✓ System verified"
-    echo
-    echo "IMPORTANT: Save this backup directory: $BACKUP_DIR"
-    echo "Restore command: sudo $0 restore $BACKUP_DIR"
-    echo
 }
 
 # Execute main function

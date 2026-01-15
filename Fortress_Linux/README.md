@@ -58,6 +58,18 @@ Fortress Linux is a comprehensive security hardening framework designed to enhan
 - **Rollback Automation**: Automatic backup creation before changes
 - **Pre-commit Hooks**: Automated code quality enforcement
 
+### Terminal UX Experience
+- **Step-by-Step Progress**: Clear progress indicators (1/12, 2/12, etc.)
+- **Time Estimates**: Predicted duration for each operation
+- **Progress Bars**: Visual progress for multi-item operations
+- **Animated Spinners**: Real-time feedback for long operations
+- **Interactive Confirmations**: Safety prompts for destructive changes
+- **Enhanced Error Messages**: Contextual errors with fix suggestions
+- **Verification Tables**: Compact summary of hardening status
+- **Completion Dashboard**: Final summary with system status
+- **Smart Verbosity**: Quiet, normal, verbose, and debug modes
+- **Dry-run Mode**: Preview changes without making them
+
 ## 📋 Prerequisites
 
 ### System Requirements
@@ -100,11 +112,24 @@ sudo ./scripts/setup-dev-environment.sh
 git clone https://github.com/elliotsecops/Secure-Fortress-Linux.git
 cd Secure-Fortress-Linux/Fortress_Linux
 
-# 2. Run hardening script
+# 2. Run hardening script with optimal UX
 sudo bash scripts/linux_hardening.sh
 
-# 3. Monitor progress
-tail -f /var/log/fortress-hardening.log
+# 3. Monitor progress (now with real-time feedback)
+# The script provides:
+#   • Step-by-step progress with time estimates
+#   • Progress bars for multi-item operations
+#   • Animated spinners for long operations
+#   • Interactive confirmations for dangerous changes
+#   • Enhanced error messages with fix suggestions
+#   • Verification table showing hardening status
+#   • Completion dashboard with summary
+
+# Advanced options:
+sudo bash scripts/linux_hardening.sh --verbose     # Detailed output
+sudo bash scripts/linux_hardening.sh --quiet       # Errors only
+sudo bash scripts/linux_hardening.sh --yes         # Skip confirmations
+sudo bash scripts/linux_hardening.sh --dry-run     # Preview changes
 ```
 
 ### Option 3: Ansible Installation
@@ -164,8 +189,46 @@ Fortress Linux supports minimal system installations with resource constraints. 
 
 ### Minimal Installation Using Inventory
 ```bash
-# Use the minimal inventory configuration
+# Use minimal inventory configuration
 ansible-playbook -i ansible/inventory/minimal.ini ansible/playbooks/playbook_hardening.yml
+```
+
+### Minimal Hardening Script
+```bash
+# Run minimal hardening with backup disabled
+sudo bash scripts/linux_hardening.sh --minimal --backup-skip
+
+# Minimal with verbose output for debugging
+sudo bash scripts/linux_hardening.sh --minimal --verbose
+
+# Verify critical services only
+sudo systemctl status auditd sshd ufw
+```
+
+### CLI Options Reference
+```bash
+# Verbosity Control
+  --quiet, -q       Minimal output (errors only)
+  --verbose, -v      Detailed output
+  --debug, -vv       Very detailed with debug info
+
+# Safety & Automation
+  --yes, -y          Skip all confirmations (use with caution!)
+  --dry-run          Show what would be done without making changes
+
+# Minimal Mode
+  --minimal           Enable minimal mode (resource-constrained systems)
+  --backup-skip       Skip backup creation
+  --skip-updates      Skip system package updates
+  --offline           Run in offline mode (no network calls)
+
+# Advanced
+  --threads NUM       Set number of parallel threads (default: 4)
+  --config FILE       Use custom configuration file
+  --help             Show help message
+
+# Commands
+  restore <dir>       Restore from backup directory
 ```
 
 ### Minimal Hardening Script
@@ -325,6 +388,29 @@ bash -n scripts/backup_restore.sh
 # Verify Ansible playbooks
 ansible-playbook --syntax-check ansible/playbooks/playbook_hardening.yml
 ansible-lint ansible/playbooks/
+
+# Test UX functions (new!)
+./scripts/test_ux.sh
+```
+
+### UX Testing
+```bash
+# Test all terminal UX functions
+./scripts/test_ux.sh
+
+# This tests:
+#   ✓ Verbosity levels (debug, verbose, info, quiet)
+#   ✓ Colored logging
+#   ✓ Progress bars
+#   ✓ Step counters
+#   ✓ Animated spinners
+#   ✓ Verification tables
+#   ✓ Error messages with fix suggestions
+#   ✓ Headers, sections, and dividers
+#   ✓ Confirmation system
+#   ✓ Dry-run mode
+#   ✓ Auto-confirm detection
+```
 ```
 
 ### Molecule Integration Testing

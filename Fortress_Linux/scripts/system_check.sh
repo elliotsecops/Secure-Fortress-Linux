@@ -1,108 +1,159 @@
 #!/bin/bash
 
 # Quick System Compatibility Check for Fortress Linux
-# Tests basic system requirements
+# Tests basic system requirements with enhanced UX
 
 set -euo pipefail
 
-echo "=== Fortress Linux System Compatibility Check ==="
-echo "System: $(lsb_release -d 2>/dev/null || echo 'Unknown')"
-echo "Kernel: $(uname -r)"
-echo "Architecture: $(uname -m)"
-echo "Date: $(date)"
+# Source UX core library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/ux_core.sh" || {
+    echo "ERROR: Failed to load ux_core.sh"
+    exit 1
+}
+
+# Parse UX arguments
+parse_ux_arguments "$@"
+
+print_header "🔍 Fortress Linux - System Compatibility Check"
+
 echo
+echo "System Information:"
+echo "  └─ $(lsb_release -d 2>/dev/null | cut -f2- || echo 'Unknown')"
+echo "  └─ Kernel: $(uname -r)"
+echo "  └─ Architecture: $(uname -m)"
+echo "  └─ Date: $(date)"
+echo
+
+# Store verification results
+declare -a verification_results=()
 
 # Check Ubuntu/Debian version
 if [[ -f /etc/os-release ]]; then
     source /etc/os-release
-    echo "OS: $PRETTY_NAME"
-    echo "Version: $VERSION_ID"
+    echo "OS Version: $PRETTY_NAME ($VERSION_ID)"
+    echo
 
     case "$ID" in
         ubuntu)
             if [[ "${VERSION_ID%%.*}" -ge 22 ]]; then
-                echo "✅ Ubuntu $VERSION_ID is supported"
+                verification_results+=("Ubuntu Version|ok|${VERSION_ID} supported")
             else
-                echo "⚠️  Ubuntu $VERSION_ID - consider upgrading to 22.04+"
+                verification_results+=("Ubuntu Version|warning|${VERSION_ID} - upgrade to 22.04+ recommended")
             fi
             ;;
         debian)
             if [[ "${VERSION_ID%%.*}" -ge 12 ]]; then
-                echo "✅ Debian $VERSION_ID is supported"
+                verification_results+=("Debian Version|ok|${VERSION_ID} supported")
             else
-                echo "⚠️  Debian $VERSION_ID - consider upgrading to 12+"
+                verification_results+=("Debian Version|warning|${VERSION_ID} - upgrade to 12+ recommended")
             fi
             ;;
         *)
-            echo "⚠️  Unsupported OS: $ID"
+            verification_results+=("Operating System|error|${ID} - Ubuntu/Debian required")
             ;;
     esac
-    echo
 fi
 
 # Check Python
 if command -v python3 >/dev/null 2>&1; then
-    echo "✅ Python: $(python3 --version)"
+    verification_results+=("Python|ok|$(python3 --version)")
 else
-    echo "❌ Python 3 not found"
+    verification_results+=("Python|error|Not found - install with: apt install python3")
 fi
 
 # Check systemd
 if command -v systemctl >/dev/null 2>&1; then
-    echo "✅ Systemd: $(systemctl --version | head -n1)"
+    verification_results+=("Systemd|ok|Available")
 else
-    echo "❌ Systemd not found"
+    verification_results+=("Systemd|error|Not found - required for service management")
 fi
 
 # Check package manager
 if command -v apt >/dev/null 2>&1; then
-    echo "✅ APT package manager available"
+    verification_results+=("APT Package Manager|ok|Available")
 else
-    echo "❌ APT package manager not found"
+    verification_results+=("APT Package Manager|error|Not found - Ubuntu/Debian required")
 fi
 
 # Check disk space
 available_gb=$(df -BG / | awk 'NR==2{print $4}' | tr -d 'G')
 if [[ $available_gb -ge 1 ]]; then
-    echo "✅ Disk space: ${available_gb}GB available"
+    verification_results+=("Disk Space|ok|${available_gb}GB available")
 else
-    echo "❌ Insufficient disk space: ${available_gb}GB"
+    verification_results+=("Disk Space|error|${available_gb}GB - minimum 1GB required")
 fi
 
 # Check memory
 total_mb=$(free -m | awk 'NR==2{print $2}')
 if [[ $total_mb -ge 512 ]]; then
-    echo "✅ Memory: ${total_mb}MB total"
+    verification_results+=("Memory|ok|${total_mb}MB total")
 else
-    echo "⚠️  Low memory: ${total_mb}MB"
+    verification_results+=("Memory|warning|${total_mb}MB - low, performance may be affected")
 fi
 
 # Check SSH
 if command -v sshd >/dev/null 2>&1; then
-    echo "✅ SSH daemon available"
+    verification_results+=("SSH Daemon|ok|Available")
 else
-    echo "❌ SSH daemon not found"
+    verification_results+=("SSH Daemon|warning|Will be installed during hardening")
 fi
 
 # Check UFW (will be installed if missing)
 if command -v ufw >/dev/null 2>&1; then
-    echo "✅ UFW firewall available"
+    verification_results+=("UFW Firewall|ok|Available")
 else
-    echo "ℹ️  UFW will be installed during hardening"
+    verification_results+=("UFW Firewall|info|Will be installed during hardening")
 fi
 
 # Check auditd (will be installed if missing)
 if command -v auditd >/dev/null 2>&1; then
-    echo "✅ Audit daemon available"
+    verification_results+=("Audit Daemon|ok|Available")
 else
-    echo "ℹ️  Audit daemon will be installed during hardening"
+    verification_results+=("Audit Daemon|info|Will be installed during hardening")
 fi
 
+# Show results
+print_section "Verification Results"
+show_verification_table "${verification_results[@]}"
+
+# Count status
+local ok_count=0
+local warning_count=0
+local error_count=0
+
+for result in "${verification_results[@]}"; do
+    local status="${result#*|}"
+    status="${status%%|*}"
+
+    if [[ "$status" == "ok" ]]; then
+        ((ok_count++))
+    elif [[ "$status" == "warning" ]]; then
+        ((warning_count++))
+    elif [[ "$status" == "error" ]]; then
+        ((error_count++))
+    fi
+done
+
+# Summary
 echo
-echo "=== Summary ==="
-echo "Your system appears to be compatible with Fortress Linux."
-echo "You can proceed with the hardening process."
+print_divider "─"
+if [[ $error_count -eq 0 ]]; then
+    log_success "Your system is compatible with Fortress Linux!"
+    echo
+    echo "✓ ${ok_count} checks passed"
+    if [[ $warning_count -gt 0 ]]; then
+        echo "⚠ ${warning_count} warnings (non-critical)"
+    fi
+    echo
+    echo "Next steps:"
+    echo "  1. Create a backup: sudo ./scripts/backup_restore.sh backup"
+    echo "  2. Run hardening: sudo ./scripts/linux_hardening.sh"
+    echo "  3. For automation: sudo ./scripts/linux_hardening.sh --yes --verbose"
+else
+    log_error "Your system has ${error_count} compatibility issues"
+    echo
+    echo "Please resolve the errors above before proceeding with hardening."
+fi
+print_divider "─"
 echo
-echo "Next steps:"
-echo "1. Create a backup: sudo ./scripts/backup_restore.sh backup"
-echo "2. Run hardening: sudo ./scripts/linux_hardening.sh"

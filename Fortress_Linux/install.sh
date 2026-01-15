@@ -5,44 +5,58 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source UX core library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/ux_core.sh" || {
+    echo "ERROR: Failed to load ux_core.sh"
+    exit 1
+}
 
 # Installation variables
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_MODE="manual"
 ANSIBLE_CONFIG="$SCRIPT_DIR/ansible/ansible.cfg"
 INVENTORY_FILE="$SCRIPT_DIR/ansible/inventory/hosts"
 REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
 ANSIBLE_REQUIREMENTS="$SCRIPT_DIR/requirements.yml"
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
 # Function to check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        print_error "This script should not be run as root for security reasons."
+        show_error "This script should not be run as root" "Run as regular user, script will use sudo where needed" ""
         exit 1
     fi
+}
+
+# Function to check system requirements
+check_requirements() {
+    print_section "System Requirements Check"
+    
+    # Check OS
+    if [[ ! -f /etc/os-release ]]; then
+        show_error "Cannot determine operating system" "Ensure /etc/os-release exists" ""
+        exit 1
+    fi
+    
+    source /etc/os-release
+    if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then
+        log_warning "This script is designed for Ubuntu/Debian. Other distributions may require manual adjustments."
+    fi
+    
+    # Check memory
+    total_mem=$(free -m | awk 'NR==2{printf "%.0f", $2}')
+    if [[ $total_mem -lt 2048 ]]; then
+        log_warning "System has less than 2GB RAM. Performance may be affected."
+    fi
+    
+    # Check disk space
+    available_space=$(df -k "$SCRIPT_DIR" | awk 'NR==2 {print $4}')
+    if [[ $available_space -lt 10485760 ]]; then # 10GB in KB
+        show_error "Insufficient disk space" "At least 10GB free space required. Check: df -h" ""
+        exit 1
+    fi
+    
+    log_success "System requirements check passed"
+    echo
 }
 
 # Function to check system requirements
@@ -78,13 +92,12 @@ check_requirements() {
 
 # Function to install dependencies
 install_dependencies() {
-    print_status "Installing dependencies..."
+    start_spinner "Updating package list"
+    sudo apt update -qq
+    stop_spinner "success" "Package list updated"
 
-    # Update package list
-    sudo apt update
-
-    # Install basic dependencies
-    sudo apt install -y \
+    start_spinner "Installing basic dependencies"
+    sudo apt install -y -qq \
         git \
         curl \
         wget \
@@ -94,75 +107,78 @@ install_dependencies() {
         python3-dev \
         build-essential \
         software-properties-common
-
+    stop_spinner "success" "Basic dependencies installed"
+    
     # Install Ansible if not present
     if ! command -v ansible &> /dev/null; then
-        print_status "Installing Ansible..."
-        sudo apt install -y ansible
+        start_spinner "Installing Ansible"
+        sudo apt install -y -qq ansible
+        stop_spinner "success" "Ansible installed"
     else
-        print_success "Ansible already installed: $(ansible --version | head -n1)"
+        log_success "Ansible already installed: $(ansible --version | head -n1)"
     fi
-
-    print_success "Dependencies installed successfully"
+    
+    log_success "Dependencies installed successfully"
+    echo
 }
 
 # Function to setup Python virtual environment
 setup_venv() {
-    print_status "Setting up Python virtual environment..."
-
     if [[ ! -d "$SCRIPT_DIR/.venv" ]]; then
+        start_spinner "Creating Python virtual environment"
         python3 -m venv "$SCRIPT_DIR/.venv"
+        stop_spinner "success" "Virtual environment created"
+    else
+        log_verbose "Virtual environment already exists"
     fi
-
+    
     source "$SCRIPT_DIR/.venv/bin/activate"
-
+    
     # Install Python requirements
     if [[ -f "$REQUIREMENTS_FILE" ]]; then
-        pip install -r "$REQUIREMENTS_FILE"
+        start_spinner "Installing Python requirements"
+        pip install -r "$REQUIREMENTS_FILE" -qq
+        stop_spinner "success" "Python requirements installed"
     fi
-
-    print_success "Python virtual environment setup completed"
+    
+    log_success "Python virtual environment setup completed"
+    echo
 }
 
 # Function to install Ansible collections
 install_ansible_collections() {
-    print_status "Installing Ansible collections..."
-
     if [[ -f "$ANSIBLE_REQUIREMENTS" ]]; then
-        ansible-galaxy collection install -r "$ANSIBLE_REQUIREMENTS"
+        start_spinner "Installing Ansible collections"
+        ansible-galaxy collection install -r "$ANSIBLE_REQUIREMENTS" -qq
+        stop_spinner "success" "Ansible collections installed"
+        echo
     fi
-
-    print_success "Ansible collections installed"
 }
 
 # Function to configure Ansible
 configure_ansible() {
-    print_status "Configuring Ansible..."
-
     # Copy ansible.cfg if it doesn't exist
     if [[ ! -f "$ANSIBLE_CONFIG" ]]; then
         if [[ -f "$SCRIPT_DIR/config/ansible.cfg" ]]; then
             cp "$SCRIPT_DIR/config/ansible.cfg" "$ANSIBLE_CONFIG"
+            log_verbose "Copied ansible.cfg template"
         fi
     fi
-
+    
     # Update ansible.cfg with correct paths
     if [[ -f "$ANSIBLE_CONFIG" ]]; then
         sed -i "s|inventory = ./config/hosts|inventory = $INVENTORY_FILE|g" "$ANSIBLE_CONFIG"
         sed -i "s|log_path = ./logs/deployment.log|log_path = $SCRIPT_DIR/logs/deployment.log|g" "$ANSIBLE_CONFIG"
+        log_success "Ansible configuration completed"
     fi
-
-    print_success "Ansible configuration completed"
 }
 
 # Function to setup inventory file
 setup_inventory() {
-    print_status "Setting up inventory file..."
-
     if [[ ! -f "$INVENTORY_FILE" ]]; then
-        print_warning "Inventory file not found. Creating template..."
+        log_warning "Inventory file not found. Creating template..."
         mkdir -p "$SCRIPT_DIR/ansible/inventory"
-
+        
         cat > "$INVENTORY_FILE" << EOF
 # Fortress Linux - Host Inventory File
 # Add your target systems below
@@ -183,68 +199,81 @@ setup_inventory() {
 ansible_python_interpreter=/usr/bin/python3
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 EOF
+        log_success "Inventory file setup completed"
+    else
+        log_verbose "Inventory file already exists"
     fi
-
-    print_success "Inventory file setup completed"
 }
 
 # Function to test connectivity
 test_connectivity() {
-    print_status "Testing connectivity..."
-
     if command -v ansible &> /dev/null; then
-        if ansible -i "$INVENTORY_FILE" localhost -m ping -c local; then
-            print_success "Connectivity test passed"
+        start_spinner "Testing connectivity"
+        if ansible -i "$INVENTORY_FILE" localhost -m ping -c local >/dev/null 2>&1; then
+            stop_spinner "success" "Connectivity test passed"
+            echo
         else
-            print_warning "Connectivity test failed. Check your inventory file."
+            stop_spinner "warning" "Connectivity test failed"
+            log_warning "Check your inventory file configuration"
+            echo
         fi
     else
-        print_warning "Ansible not available. Skipping connectivity test."
+        log_warning "Ansible not available. Skipping connectivity test."
     fi
 }
 
 # Function to run security hardening
 run_hardening() {
-    print_status "Ready to run security hardening..."
+    local mode="${1:-}"
 
-    echo "Choose installation mode:"
-    echo "1) Manual (Bash script)"
-    echo "2) Automated (Ansible playbook)"
-    echo "3) Test mode (Dry run)"
-    read -p "Enter your choice [1-3]: " choice
+    if [[ -z "$mode" ]]; then
+        print_section "Choose Installation Mode"
+        echo
+        echo "  ${CYAN}1)${NC} Manual (Bash script) - Best for single systems"
+        echo "  ${CYAN}2)${NC} Automated (Ansible) - Best for multiple systems"
+        echo "  ${CYAN}3)${NC} Test mode (Dry run) - Preview changes only"
+        echo
+        read -p "Enter your choice [1-3]: " choice
+        
+        case $choice in
+            1) mode=1 ;;
+            2) mode=2 ;;
+            3) mode=3 ;;
+            *)
+                show_error "Invalid choice" "Enter 1, 2, or 3" ""
+                exit 1
+                ;;
+        esac
+    fi
 
-    case $choice in
+    case $mode in
         1)
-            print_status "Running manual hardening..."
+            log_info "Running manual hardening..."
             if [[ -f "$SCRIPT_DIR/scripts/linux_hardening.sh" ]]; then
                 chmod +x "$SCRIPT_DIR/scripts/linux_hardening.sh"
                 sudo "$SCRIPT_DIR/scripts/linux_hardening.sh"
             else
-                print_error "Hardening script not found!"
+                show_error "Hardening script not found" "Check path: $SCRIPT_DIR/scripts/linux_hardening.sh" ""
                 exit 1
             fi
             ;;
         2)
-            print_status "Running automated hardening..."
+            log_info "Running automated hardening..."
             if [[ -f "$SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" ]]; then
                 ansible-playbook -i "$INVENTORY_FILE" "$SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml"
             else
-                print_error "Ansible playbook not found!"
+                show_error "Ansible playbook not found" "Check path: $SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" ""
                 exit 1
             fi
             ;;
         3)
-            print_status "Running in test mode..."
+            log_info "Running in test mode..."
             if [[ -f "$SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" ]]; then
                 ansible-playbook -i "$INVENTORY_FILE" "$SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" --check
             else
-                print_error "Ansible playbook not found!"
+                show_error "Ansible playbook not found" "Check path: $SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" ""
                 exit 1
             fi
-            ;;
-        *)
-            print_error "Invalid choice!"
-            exit 1
             ;;
     esac
 }
@@ -276,18 +305,19 @@ create_backup() {
 # Function to display help
 show_help() {
     cat << EOF
-Fortress Linux Installation Script
+${BOLD}Fortress Linux Installation Script${NC}
 
 USAGE:
     $0 [OPTIONS]
 
 OPTIONS:
-    -h, --help          Show this help message
-    -m, --mode MODE     Installation mode (manual|ansible|test)
-    -b, --backup        Create backup before installation
-    -s, --skip-deps     Skip dependency installation
-    -t, --test          Test mode only (dry run)
-    -v, --verbose       Verbose output
+    ${CYAN}-h, --help${NC}          Show this help message
+    ${CYAN}-m, --mode MODE${NC}     Installation mode (manual|ansible|test)
+    ${CYAN}-b, --backup${NC}        Create backup before installation
+    ${CYAN}-s, --skip-deps${NC}     Skip dependency installation
+    ${CYAN}-t, --test${NC}          Test mode only (dry run)
+    ${CYAN}-q, --quiet${NC}         Minimal output (errors only)
+    ${CYAN}-v, --verbose${NC}       Verbose output
 
 EXAMPLES:
     $0                  Interactive installation
@@ -302,6 +332,9 @@ EOF
 
 # Main installation function
 main() {
+    # Parse UX arguments first
+    parse_ux_arguments "$@"
+
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -325,52 +358,45 @@ main() {
                 TEST_MODE=true
                 shift
                 ;;
-            -v|--verbose)
-                VERBOSE=true
-                shift
-                ;;
             *)
-                print_error "Unknown option: $1"
-                show_help
-                exit 1
+                shift
                 ;;
         esac
     done
+    
+    # Display header
+    print_header "🚀 Fortress Linux - Installation"
 
-    # Set verbose mode
-    if [[ "$VERBOSE" == "true" ]]; then
-        set -x
-    fi
-
-    print_status "Starting Fortress Linux installation..."
-    print_status "Installation directory: $SCRIPT_DIR"
-
+    echo
+    log_info "Installation directory: $SCRIPT_DIR"
+    echo
+    
     # Pre-installation checks
     check_root
     check_requirements
-
+    
     # Create backup if requested
     if [[ "$CREATE_BACKUP" == "true" ]]; then
         create_backup
     fi
-
+    
     # Install dependencies
     if [[ "$SKIP_DEPS" != "true" ]]; then
         install_dependencies
     fi
-
+    
     # Setup environment
     setup_venv
     install_ansible_collections
     configure_ansible
     setup_inventory
-
+    
     # Test connectivity
     test_connectivity
-
+    
     # Run hardening
     if [[ "$TEST_MODE" == "true" ]]; then
-        print_status "Running in test mode..."
+        log_info "Running in test mode..."
         ansible-playbook -i "$INVENTORY_FILE" "$SCRIPT_DIR/ansible/playbooks/playbook_hardening.yml" --check
     elif [[ "$INSTALL_MODE" == "manual" ]]; then
         run_hardening 1
@@ -381,10 +407,12 @@ main() {
     else
         run_hardening
     fi
-
-    print_success "Fortress Linux installation completed!"
-    print_status "Review the logs in $SCRIPT_DIR/logs/ for details."
-    print_status "For configuration options, see $SCRIPT_DIR/docs/ directory."
+    
+    print_header "✅ Installation Complete"
+    echo
+    log_info "Review the logs in $SCRIPT_DIR/logs/ for details."
+    log_info "For configuration options, see $SCRIPT_DIR/docs/ directory."
+    echo
 }
 
 # Run main function
