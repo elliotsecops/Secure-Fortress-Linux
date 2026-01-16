@@ -351,39 +351,39 @@ show_verification_table() {
     local results=("$@")
     
     local term_width=$(get_terminal_width)
-    local max_name_len=20
-    local max_msg_len=$((term_width - max_name_len - 20))
+    local table_max_name_len=20
+    local max_msg_len=$((term_width - table_max_name_len - 20))
     
-    for result in "${results[@]}"; do
-        local name="${result%%|*}"
-        [[ ${#name} -gt $max_name_len ]] && max_name_len=${#name}
+    for _result in "${results[@]}"; do
+        local _name="${_result%%|*}"
+        [[ ${#_name} -gt $table_max_name_len ]] && table_max_name_len=${#_name}
     done
     
     local divider=$(printf '%*s' "$term_width" '' | tr ' ' '─')
     
     echo
     echo "$divider"
-    printf "%-${max_name_len}s  %-12s  %s\n" "Component" "Status" "Details"
+    printf "%-${table_max_name_len}s  %-12s  %s\n" "Component" "Status" "Details"
     echo "$divider"
     
-    for result in "${results[@]}"; do
-        local name="${result%%|*}"
-        local rest="${result#*|}"
-        local status="${rest%%|*}"
-        local msg="${rest##*|}"
+    for _result in "${results[@]}"; do
+        local _name="${_result%%|*}"
+        local _rest="${_result#*|}"
+        local _status="${_rest%%|*}"
+        local _msg="${_rest##*|}"
         
-        local status_color="$GREEN"
-        local status_icon="✓"
+        local _status_color="$GREEN"
+        local _status_icon="✓"
         
-        if [[ "$status" != "ok" ]]; then
-            status_color="$RED"
-            status_icon="✗"
-        elif [[ "$status" == "warning" ]]; then
-            status_color="$YELLOW"
-            status_icon="⚠"
+        if [[ "$_status" != "ok" ]]; then
+            _status_color="$RED"
+            _status_icon="✗"
+        elif [[ "$_status" == "warning" ]]; then
+            _status_color="$YELLOW"
+            _status_icon="⚠"
         fi
         
-        printf "%-${max_name_len}s  ${status_color}[%s]${NC}  %s\n" "$name" "$status_icon" "$msg"
+        printf "%-${table_max_name_len}s  ${_status_color}[%s]${NC}  %s\n" "$_name" "$_status_icon" "$_msg"
     done
     
     echo "$divider"

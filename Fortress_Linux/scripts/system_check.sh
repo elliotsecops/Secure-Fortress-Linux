@@ -28,6 +28,12 @@ echo
 # Store verification results
 declare -a verification_results=()
 
+# Initialize counters for final summary (global scope - not local!)
+ok_count=0
+warning_count=0
+error_count=0
+
+
 # Check Ubuntu/Debian version
 if [[ -f /etc/os-release ]]; then
     source /etc/os-release
@@ -118,24 +124,43 @@ print_section "Verification Results"
 show_verification_table "${verification_results[@]}"
 
 # Count status
-local ok_count=0
-local warning_count=0
-local error_count=0
-
 for result in "${verification_results[@]}"; do
-    local status="${result#*|}"
-    status="${status%%|*}"
+    _rest="${result#*|}"
+    _status="${_rest%%|*}"
 
-    if [[ "$status" == "ok" ]]; then
-        ((ok_count++))
-    elif [[ "$status" == "warning" ]]; then
-        ((warning_count++))
-    elif [[ "$status" == "error" ]]; then
-        ((error_count++))
+    if [[ "$_status" == "ok" ]]; then
+        ok_count=$((ok_count + 1))
+    elif [[ "$_status" == "warning" ]]; then
+        warning_count=$((warning_count + 1))
+    elif [[ "$_status" == "error" ]]; then
+        error_count=$((error_count + 1))
     fi
 done
 
+# Clear temporary variables
+unset _rest _status
+
 # Summary
+echo
+print_divider "─"
+if [[ $error_count -eq 0 ]]; then
+    log_success "Your system is compatible with Fortress Linux!"
+    echo
+    echo "✓ ${ok_count} checks passed"
+    if [[ $warning_count -gt 0 ]]; then
+        echo "⚠ ${warning_count} warnings (non-critical)"
+    fi
+    echo
+    echo "Next steps:"
+    echo "  1. Create a backup: sudo ./scripts/backup_restore.sh backup"
+    echo "  2. Run hardening: sudo ./scripts/linux_hardening.sh"
+    echo "  3. For automation: sudo ./scripts/linux_hardening.sh --yes --verbose"
+else
+    log_error "Your system has ${error_count} compatibility issues"
+    echo
+    echo "Please resolve the errors above before proceeding with hardening."
+fi
+print_divider "─"
 echo
 print_divider "─"
 if [[ $error_count -eq 0 ]]; then
