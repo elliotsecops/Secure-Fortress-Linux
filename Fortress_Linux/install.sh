@@ -14,6 +14,9 @@ source "$SCRIPT_DIR/scripts/ux_core.sh" || {
 
 # Installation variables
 INSTALL_MODE="manual"
+CREATE_BACKUP="false"
+SKIP_DEPS="false"
+TEST_MODE="false"
 ANSIBLE_CONFIG="$SCRIPT_DIR/ansible/ansible.cfg"
 INVENTORY_FILE="$SCRIPT_DIR/ansible/inventory/hosts"
 REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
@@ -57,37 +60,6 @@ check_requirements() {
     
     log_success "System requirements check passed"
     echo
-}
-
-# Function to check system requirements
-check_requirements() {
-    print_status "Checking system requirements..."
-
-    # Check OS
-    if [[ ! -f /etc/os-release ]]; then
-        print_error "Cannot determine operating system"
-        exit 1
-    fi
-
-    source /etc/os-release
-    if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then
-        print_warning "This script is designed for Ubuntu/Debian. Other distributions may require manual adjustments."
-    fi
-
-    # Check memory
-    total_mem=$(free -m | awk 'NR==2{printf "%.0f", $2}')
-    if [[ $total_mem -lt 2048 ]]; then
-        print_warning "System has less than 2GB RAM. Performance may be affected."
-    fi
-
-    # Check disk space
-    available_space=$(df -k "$SCRIPT_DIR" | awk 'NR==2 {print $4}')
-    if [[ $available_space -lt 10485760 ]]; then # 10GB in KB
-        print_error "Insufficient disk space. At least 10GB free space required."
-        exit 1
-    fi
-
-    print_success "System requirements check passed"
 }
 
 # Function to install dependencies

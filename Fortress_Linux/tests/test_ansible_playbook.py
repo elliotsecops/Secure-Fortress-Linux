@@ -14,14 +14,19 @@ class TestAnsiblePlaybook:
     """Test the main Ansible hardening playbook"""
 
     @pytest.fixture(scope="class")
-    def playbook_path(self):
-        """Return the path to the main playbook"""
-        return "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/playbooks/playbook_hardening.yml"
+    def base_dir(self):
+        """Return the project base directory"""
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     @pytest.fixture(scope="class")
-    def inventory_path(self):
+    def playbook_path(self, base_dir):
+        """Return the path to the main playbook"""
+        return os.path.join(base_dir, "ansible", "playbooks", "playbook_hardening.yml")
+
+    @pytest.fixture(scope="class")
+    def inventory_path(self, base_dir):
         """Return the path to the inventory file"""
-        return "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/inventory/hosts"
+        return os.path.join(base_dir, "ansible", "inventory", "hosts")
 
     def test_playbook_syntax(self, playbook_path):
         """Test that the playbook has valid YAML syntax"""
@@ -142,9 +147,9 @@ class TestAnsiblePlaybook:
         # Should find at least some security keywords
         assert len(found_keywords) >= 3, f"Playbook should contain security tasks, found: {found_keywords}"
 
-    def test_role_variables_exist(self):
+    def test_role_variables_exist(self, base_dir):
         """Test that role variables are properly defined"""
-        group_vars_path = "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/group_vars/all/main.yml"
+        group_vars_path = os.path.join(base_dir, "ansible", "group_vars", "all", "main.yml")
 
         if os.path.exists(group_vars_path):
             with open(group_vars_path, 'r') as f:
@@ -167,9 +172,9 @@ class TestAnsiblePlaybook:
                 except yaml.YAMLError as e:
                     pytest.fail(f"Invalid YAML in group variables: {e}")
 
-    def test_template_files_exist(self):
+    def test_template_files_exist(self, base_dir):
         """Test that template files exist and have valid syntax"""
-        template_dir = "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/templates"
+        template_dir = os.path.join(base_dir, "ansible", "roles", "system_hardening", "templates")
 
         if os.path.exists(template_dir):
             template_files = [f for f in os.listdir(template_dir) if f.endswith('.j2')]
@@ -188,11 +193,11 @@ class TestAnsiblePlaybook:
                 except Exception as e:
                     pytest.fail(f"Error reading template {template_file}: {e}")
 
-    def test_configuration_files_secure(self):
+    def test_configuration_files_secure(self, base_dir):
         """Test that configuration files have secure permissions"""
         config_files = [
-            "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/ansible.cfg",
-            "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/inventory/hosts"
+            os.path.join(base_dir, "ansible", "ansible.cfg"),
+            os.path.join(base_dir, "ansible", "inventory", "hosts")
         ]
 
         for config_file in config_files:
@@ -226,9 +231,9 @@ class TestAnsiblePlaybook:
         # Should find most security checks
         assert len(found_checks) >= 2, f"Playbook should follow security best practices, found: {found_checks}"
 
-    def test_ansible_configuration(self):
+    def test_ansible_configuration(self, base_dir):
         """Test Ansible configuration file"""
-        ansible_cfg_path = "/home/elliot/Documents/Reto scripts 30 dias/Fortress_Linux/ansible/ansible.cfg"
+        ansible_cfg_path = os.path.join(base_dir, "ansible", "ansible.cfg")
 
         if os.path.exists(ansible_cfg_path):
             with open(ansible_cfg_path, 'r') as f:

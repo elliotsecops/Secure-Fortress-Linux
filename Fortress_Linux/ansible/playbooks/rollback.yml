@@ -33,7 +33,7 @@
 
     - name: Restore SSH configuration
       copy:
-        src: "{{ latest_backup }}/sshd_config.bak-*"
+        src: "{{ latest_backup }}/sshd_config"
         dest: /etc/ssh/sshd_config
         remote_src: yes
         owner: root
@@ -44,7 +44,7 @@
 
     - name: Restore password quality configuration
       copy:
-        src: "{{ latest_backup }}/pwquality.conf.bak-*"
+        src: "{{ latest_backup }}/pwquality.conf"
         dest: /etc/security/pwquality.conf
         remote_src: yes
         owner: root
@@ -55,7 +55,7 @@
 
     - name: Restore auditd configuration
       copy:
-        src: "{{ latest_backup }}/auditd.conf.bak-*"
+        src: "{{ latest_backup }}/auditd.conf"
         dest: /etc/audit/auditd.conf
         remote_src: yes
         owner: root
@@ -64,9 +64,20 @@
       failed_when: false
       register: auditd_restore
 
+    - name: Restore auditd rules
+      copy:
+        src: "{{ latest_backup }}/audit.rules"
+        dest: /etc/audit/rules.d/hardening.rules
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0640'
+      failed_when: false
+      register: audit_rules_restore
+
     - name: Restore UFW configuration
       copy:
-        src: "{{ latest_backup }}/ufw.conf.bak-*"
+        src: "{{ latest_backup }}/ufw.conf"
         dest: /etc/ufw/ufw.conf
         remote_src: yes
         owner: root

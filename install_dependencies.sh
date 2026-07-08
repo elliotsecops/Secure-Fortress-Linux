@@ -118,9 +118,11 @@ if ! command_exists ansible; then
         log "Installing Ansible..."
         if [ "$DRY_RUN" = false ]; then
             $SUDO apt install -y software-properties-common || { log "Failed to install software-properties-common."; exit 1; }
-            # Manually add the Ansible repository
-            $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
-            echo "deb http://ppa.launchpad.net/ansible/ansible/ubuntu focal main" | $SUDO tee /etc/apt/sources.list.d/ansible.list
+            # Add the Ansible repository using modern keyring method (apt-key is deprecated)
+            $SUDO install -d /etc/apt/keyrings
+            wget -qO - https://keyserver.ubuntu.com/93C4A3FD7BB9C367.asc | $SUDO tee /etc/apt/keyrings/ansible.asc >/dev/null || \
+                $SUDO gpg --dearmor -o /etc/apt/keyrings/ansible.gpg <<< "$(wget -qO - 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x93C4A3FD7BB9C367')" 2>/dev/null || true
+            echo "deb [signed-by=/etc/apt/keyrings/ansible.gpg] http://ppa.launchpad.net/ansible/ansible/ubuntu focal main" | $SUDO tee /etc/apt/sources.list.d/ansible.list
             backup_config /etc/apt/sources.list.d/ansible.list
             $SUDO apt update || { log "Failed to update package list."; exit 1; }
             $SUDO apt install -y ansible || { log "Failed to install Ansible."; exit 1; }
@@ -153,8 +155,9 @@ if ! command_exists wazuh-agent; then
                 log "Adding Wazuh repository for $OS $VERSION..."
                 if [ "$DRY_RUN" = false ]; then
                     if ! grep -q "deb https://packages.wazuh.com/4.x/apt/ stable main" /etc/apt/sources.list.d/wazuh.list; then
-                        wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | $SUDO apt-key add - || { log "Failed to add Wazuh GPG key."; exit 1; }
-                        echo "deb https://packages.wazuh.com/4.x/apt/ stable main" | $SUDO tee -a /etc/apt/sources.list.d/wazuh.list || { log "Failed to add Wazuh repository."; exit 1; }
+                        $SUDO install -d /etc/apt/keyrings
+                        wget -qO - https://packages.wazuh.com/key/GPG-KEY-WAZUH | $SUDO gpg --dearmor -o /etc/apt/keyrings/wazuh.gpg || { log "Failed to add Wazuh GPG key."; exit 1; }
+                        echo "deb [signed-by=/etc/apt/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | $SUDO tee /etc/apt/sources.list.d/wazuh.list || { log "Failed to add Wazuh repository."; exit 1; }
                         backup_config /etc/apt/sources.list.d/wazuh.list
                         $SUDO apt-get update || { log "Failed to update package list."; exit 1; }
                         $SUDO apt-get install -y wazuh-agent || { log "Failed to install Wazuh Agent."; exit 1; }

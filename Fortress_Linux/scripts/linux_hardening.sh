@@ -373,7 +373,7 @@ configure_file_permissions() {
     chmod 600 /etc/ssh/sshd_config 2>/dev/null || log_warning "Could not secure SSH config"
 
     # Remove world-writable permissions
-    find / -type f -perm -002 2>/dev/null | head -20 | while read file; do
+    find / -type f -perm -002 2>/dev/null | head -20 | while IFS= read -r file; do
         if [[ -f "$file" ]]; then
             chmod o-w "$file" 2>/dev/null || log_warning "Could not remove world-writable permission from $file"
         fi
@@ -650,6 +650,10 @@ parse_arguments() {
                 THREADS="$2"
                 if ! [[ "$THREADS" =~ ^[0-9]+$ ]] || [[ "$THREADS" -lt 1 ]]; then
                     show_error "Invalid thread count" "Use a positive integer" ""
+                    exit 1
+                fi
+                if [[ "$THREADS" -gt 16 ]]; then
+                    show_error "Thread count too high" "Maximum 16 threads allowed (requested: $THREADS)" ""
                     exit 1
                 fi
                 log_verbose "Thread count set to: $THREADS"

@@ -231,7 +231,17 @@
     remote_src: yes
   with_items: "{{ system_hardening_backup_files }}"
   when: system_hardening_enabled and system_hardening_backup
-  ignore_errors: yes
+  register: backup_results
+  failed_when: false
+
+- name: Warn if backup failed
+  debug:
+    msg: "WARNING: Backup failed for some files. Check backup_results for details."
+  when:
+    - system_hardening_enabled
+    - system_hardening_backup
+    - backup_results is defined
+    - backup_results.results | selectattr('failed', 'equalto', true) | list | length > 0
 
 - name: Disable services
   systemd:

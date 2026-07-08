@@ -254,6 +254,16 @@ stop_spinner() {
     fi
 }
 
+# Cleanup function to kill orphaned spinner on exit/interrupt
+cleanup_spinner() {
+    if [[ -n "${SPINNER_PID:-}" ]]; then
+        kill "$SPINNER_PID" 2>/dev/null || true
+        wait "$SPINNER_PID" 2>/dev/null || true
+        SPINNER_PID=""
+    fi
+}
+trap cleanup_spinner EXIT INT TERM
+
 # Interactive confirmations
 confirm_action() {
     local message="$1"
@@ -550,14 +560,12 @@ is_dry_run() {
 
 # Execute command (or skip if dry-run)
 execute_command() {
-    local cmd="$*"
-    
     if is_dry_run; then
-        log_verbose "[DRY-RUN] Would execute: $cmd"
+        log_verbose "[DRY-RUN] Would execute: $*"
         return 0
     else
-        log_debug "Executing: $cmd"
-        eval "$cmd"
+        log_debug "Executing: $*"
+        "$@"
     fi
 }
 
